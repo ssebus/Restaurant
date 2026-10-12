@@ -1,0 +1,1490 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>System Rezerwacji - Podpis Palcem</title>
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --accent-color: #e67e22;
+            --vip-color: #9b59b6;
+            --bg-color: #f5f6fa;
+            --card-bg: #ffffff;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            margin: 0;
+            padding: 10px;
+            color: #333;
+        }
+
+        /* --- EKRAN POWITALNY (MCDONALD'S STYLE) --- */
+        #welcomeOverlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, rgba(44, 62, 80, 0.96), rgba(230, 126, 34, 0.96));
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+            padding: 15px;
+            box-sizing: border-box;
+            animation: fadeInOverlay 0.4s ease;
+        }
+
+        @keyframes fadeInOverlay {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .welcome-modal {
+            background: var(--card-bg);
+            width: 100%;
+            max-width: 380px;
+            padding: 25px 20px;
+            border-radius: 20px;
+            text-align: center;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.35);
+            animation: popInModal 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            position: relative;
+        }
+
+        @keyframes popInModal {
+            0% { transform: scale(0.7); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .welcome-logo {
+            font-size: 48px;
+            margin-bottom: 8px;
+            animation: bounceLogo 2s infinite;
+        }
+
+        @keyframes bounceLogo {
+            0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+            40% { transform: translateY(-8px); }
+            60% { transform: translateY(-4px); }
+        }
+
+        .lang-selector {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin: 14px 0;
+        }
+
+        .lang-btn {
+            background: #f1f2f6;
+            border: 2px solid #dfe4ea;
+            padding: 7px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 13px;
+            transition: all 0.2s;
+            width: auto;
+            color: #333;
+        }
+
+        .lang-btn.active {
+            background: var(--accent-color);
+            color: white;
+            border-color: var(--accent-color);
+            transform: scale(1.05);
+            box-shadow: 0 3px 8px rgba(230,126,34,0.3);
+        }
+
+        /* ELEGANTYKIE PRZYCISKI DINE IN / TAKE AWAY */
+        .order-type-container {
+            display: flex;
+            gap: 10px;
+            margin-top: 14px;
+        }
+
+        .order-type-btn {
+            flex: 1;
+            background: #ffffff;
+            border: 2px solid #e2e8f0;
+            color: var(--primary-color);
+            padding: 12px 10px;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.04);
+        }
+
+        .order-type-btn:hover {
+            border-color: var(--accent-color);
+            background: #fffaf5;
+            color: var(--accent-color);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(230,126,34,0.2);
+        }
+
+        .start-order-btn {
+            background: linear-gradient(135deg, #e67e22, #d35400);
+            color: white;
+            padding: 12px 20px;
+            font-size: 15px;
+            border-radius: 12px;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+            box-shadow: 0 4px 15px rgba(230, 126, 34, 0.4);
+            transition: all 0.2s;
+            width: 100%;
+            margin-top: 14px;
+        }
+
+        .start-order-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(230, 126, 34, 0.6);
+        }
+
+        .start-chef-login {
+            margin-top: 20px;
+            border-top: 1px dashed #e2e8f0;
+            padding-top: 12px;
+        }
+
+        .start-chef-login summary {
+            font-size: 12px;
+            color: #7f8c8d;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        /* --- WŁASNY SYSTEMOWY KALENDARZ I SIATKA GODZIN --- */
+        .custom-time-picker {
+            background: #f8f9fa;
+            border: 1px solid #cbd5e1;
+            border-radius: 10px;
+            padding: 12px;
+            margin-top: 5px;
+        }
+
+        .time-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            margin-top: 10px;
+            max-height: 180px;
+            overflow-y: auto;
+            padding-right: 5px;
+        }
+
+        .time-slot {
+            background: white;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            padding: 8px 4px;
+            text-align: center;
+            font-size: 13px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+            user-select: none;
+        }
+
+        .time-slot:hover:not(.disabled) {
+            border-color: var(--accent-color);
+            background: #fff5eb;
+        }
+
+        .time-slot.selected {
+            background: var(--accent-color) !important;
+            color: white !important;
+            border-color: var(--accent-color) !important;
+        }
+
+        .time-slot.disabled {
+            background: #e2e8f0;
+            color: #94a3b8;
+            text-decoration: line-through;
+            cursor: not-allowed;
+            border-color: #cbd5e1;
+            opacity: 0.6;
+        }
+
+        /* --- EKRANY POPUP / OVERLAY --- */
+        #inactivityOverlay, #orderSuccessOverlay, #thankYouOverlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 13000;
+            padding: 15px;
+            box-sizing: border-box;
+        }
+
+        .popup-card {
+            background: #fff;
+            width: 100%;
+            max-width: 360px;
+            padding: 22px 18px;
+            border-radius: 16px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+            animation: popInModal 0.3s ease;
+        }
+
+        .receipt-number-badge {
+            background: linear-gradient(135deg, var(--accent-color), #d35400);
+            color: white;
+            font-size: 28px;
+            font-weight: bold;
+            padding: 10px;
+            border-radius: 10px;
+            margin: 12px 0;
+            letter-spacing: 2px;
+        }
+
+        .receipt-details {
+            background: #f8f9fa;
+            border: 1px dashed #cbd5e1;
+            padding: 10px;
+            border-radius: 8px;
+            text-align: left;
+            font-size: 13px;
+            margin: 12px 0;
+            max-height: 140px;
+            overflow-y: auto;
+        }
+
+        .countdown-circle {
+            width: 75px;
+            height: 75px;
+            margin: 15px auto;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 24px;
+            font-weight: bold;
+            background: rgba(255,255,255,0.2);
+            border-radius: 50%;
+            border: 4px solid white;
+        }
+
+        /* --- TOP BAR --- */
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .btn-exit-top {
+            background: #e74c3c;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-weight: bold;
+            font-size: 12px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        /* --- STYLE FORMULARZA I KUCHNI --- */
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+            background: var(--card-bg);
+            padding: 15px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        h1, h2, h3 { text-align: center; color: var(--primary-color); margin-top: 10px; margin-bottom: 10px; }
+        .vip-title { color: var(--vip-color); font-weight: bold; margin-bottom: 5px; }
+        hr { border: 0; height: 1px; background: #ddd; margin: 20px 0; }
+        .form-group { margin-bottom: 15px; }
+        .amount-group { display: flex; gap: 10px; margin-top: 5px; margin-bottom: 10px; }
+        .amount-group select, .amount-group input { flex: 1.5; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; color: var(--primary-color); font-size: 14px; }
+        .optional-text { font-size: 12px; color: #7f8c8d; font-weight: normal; font-style: italic; }
+        
+        input, select, textarea {
+            width: 100%;
+            padding: 9px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            box-sizing: border-box;
+            font-size: 14px;
+        }
+
+        .vip-grid { display: flex; flex-direction: column; gap: 6px; margin-top: 5px; }
+        .vip-option {
+            background: #f8f9fa; border: 1px solid #ddd; padding: 8px 10px;
+            border-radius: 6px; cursor: pointer; font-size: 13px;
+            display: flex; align-items: center; user-select: none;
+        }
+        .vip-option.selected {
+            background: #f3e5f5; border-color: var(--vip-color);
+            color: #4a148c; font-weight: bold; box-shadow: inset 3px 0 0 var(--vip-color);
+        }
+
+        .vip-unlock-box { background: #f3e5f5; border: 2px dashed var(--vip-color); padding: 12px; border-radius: 8px; margin-bottom: 15px; display: none; }
+        .vip-special-fields { background: #faf5ff; border-left: 5px solid var(--vip-color); padding: 12px; border-radius: 6px; margin-bottom: 15px; display: none; }
+        .dynamic-fields-container { background: #fdfefe; border: 1px solid #e2e8f0; padding: 12px; border-radius: 8px; margin-bottom: 15px; }
+
+        .sub-field { margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px dashed #e2e8f0; }
+        .sub-field:last-child { margin-bottom: 0; padding-bottom: 0; border-bottom: none; }
+
+        .signature-container { border: 2px solid #ccc; border-radius: 6px; background: #fafafa; position: relative; margin-bottom: 5px; overflow: hidden; }
+        #signaturePad { display: block; width: 100%; height: 150px; cursor: crosshair; touch-action: none; }
+        .signature-line { position: absolute; bottom: 35px; left: 5%; width: 90%; border-bottom: 1px dashed #b2bec3; pointer-events: none; }
+        .signature-hint { position: absolute; bottom: 10px; left: 10px; font-size: 11px; color: #b2bec3; pointer-events: none; }
+
+        button { width: 100%; padding: 9px; border: none; color: white; font-size: 14px; font-weight: bold; border-radius: 6px; cursor: pointer; }
+        .btn-primary { background-color: var(--accent-color); }
+        .btn-vip { background-color: var(--vip-color); }
+        .btn-secondary { background-color: #7f8c8d; }
+        .chef-section { background: #edf2f7; padding: 15px; border-radius: 8px; margin-top: 25px; }
+
+        .reservation-card {
+            background: white; padding: 10px; margin-top: 8px; border-radius: 6px;
+            border-left: 4px solid var(--accent-color); box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            font-size: 13px; line-height: 1.4;
+        }
+        .reservation-card.vip-card { border-left-color: var(--vip-color); background: #fff9ff; }
+        .badge-vip { background: var(--vip-color); color: white; padding: 1px 4px; border-radius: 3px; font-size: 11px; font-weight: bold; }
+        .badge-type { background: #3498db; color: white; padding: 1px 5px; border-radius: 3px; font-size: 11px; font-weight: bold; margin-right: 4px; }
+        .chef-signature-img { display: block; height: 45px; width: auto; background: #ffffff; border-radius: 4px; margin-top: 5px; border: 1px solid #ccc; }
+
+        .btn-danger { background-color: #e74c3c; width: auto; padding: 4px 8px; font-size: 12px; margin-right: 5px; }
+        .btn-edit { background-color: #3498db; width: auto; padding: 4px 8px; font-size: 12px; margin-right: 5px; }
+        .btn-small { padding: 6px 12px; font-size: 12px; display: inline-block; margin-top: 5px;}
+        .action-buttons { display: flex; gap: 5px; margin-top: 6px; justify-content: flex-end; }
+        .pass-box { background: white; padding: 10px; border-radius: 6px; margin-bottom: 10px; }
+        .chef-order-item { margin-bottom: 4px; background: #f8f9fa; padding: 4px 8px; border-radius: 4px; border-left: 2px solid #cbd5e1; }
+
+        .switch-container { display: flex; align-items: center; justify-content: space-between; background: white; padding: 8px 12px; border-radius: 6px; margin-bottom: 10px; }
+        .switch { position: relative; display: inline-block; width: 40px; height: 20px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 20px; }
+        .slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: var(--accent-color); }
+        input:checked + .slider:before { transform: translateX(20px); }
+    </style>
+</head>
+<body>
+
+<!-- EKRAN POWITALNY (KIOSK STARTOWY) -->
+<div id="welcomeOverlay">
+    <div class="welcome-modal">
+        <div class="welcome-logo">🍔✨🥤</div>
+        <h2 id="welcomeTitle">Witamy w systemie rezerwacji!</h2>
+        <p id="welcomeSubtitle" style="color: #666; font-size: 13px; margin-bottom: 8px;">Wybierz język, aby rozpocząć zamówienie:</p>
+        
+        <div class="lang-selector">
+            <button type="button" class="lang-btn active" onclick="setLanguage('pl')">🇵🇱 PL</button>
+            <button type="button" class="lang-btn" onclick="setLanguage('en')">🇬🇧 EN</button>
+            <button type="button" class="lang-btn" onclick="setLanguage('de')">🇩🇪 DE</button>
+        </div>
+
+        <!-- PRZYCISKI DINE IN / TAKE AWAY LUB PRZYCISK WEJŚCIA -->
+        <div id="orderTypeWrapper" class="order-type-container">
+            <button type="button" class="order-type-btn" onclick="selectOrderType('DineIn')">
+                <span style="font-size:20px;">🍽️</span>
+                <span id="lblDineIn">Na miejscu</span>
+            </button>
+            <button type="button" class="order-type-btn" onclick="selectOrderType('TakeAway')">
+                <span style="font-size:20px;">🛍️</span>
+                <span id="lblTakeAway">Na wynos</span>
+            </button>
+        </div>
+
+        <button type="button" class="start-order-btn" id="startBtnText" style="display:none;" onclick="selectOrderType('Standard')">Wejdź ➔</button>
+
+        <details class="start-chef-login">
+            <summary id="chefLoginToggleText">🔑 Szybkie logowanie kucharza</summary>
+            <div style="margin-top: 8px;">
+                <input type="password" id="startChefPass" placeholder="Hasło kucharza" style="font-size: 12px; padding: 7px; margin-bottom: 6px;">
+                <button type="button" class="btn-primary" style="font-size: 12px; padding: 7px;" onclick="quickChefLogin()">Wejdź do panelu</button>
+            </div>
+        </details>
+    </div>
+</div>
+
+<!-- EKRAN BEZCZYNNOŚCI -->
+<div id="inactivityOverlay">
+    <div class="popup-card">
+        <div style="font-size: 36px; margin-bottom: 8px;">❓🤔</div>
+        <h3 id="inactivityTitle" style="margin-top:0;">Czy nadal tu jesteś?</h3>
+        <p id="inactivityDesc" style="font-size: 13px; color: #666;">Brak aktywności. Ekran zamknie się za:</p>
+        <div style="font-size: 26px; font-weight: bold; color: var(--accent-color); margin: 8px 0;" id="inactivitySecDisplay">10</div>
+        
+        <div style="display: flex; gap: 8px; margin-top: 12px;">
+            <button type="button" class="btn-primary" id="btnStayHere" onclick="keepSessionAlive()">Tak, jestem!</button>
+            <button type="button" class="btn-secondary" id="btnExitNow" onclick="returnToWelcomeScreen()">Wyjdź</button>
+        </div>
+    </div>
+</div>
+
+<!-- EKRAN POTWIERDZENIA / PARAGON -->
+<div id="orderSuccessOverlay">
+    <div class="popup-card">
+        <div style="font-size: 36px;">🧾✨</div>
+        <h2 id="receiptAcceptedTitle" style="margin-bottom: 4px;">Zamówienie przyjęte!</h2>
+        <p id="receiptSaveNumText" style="font-size: 13px; color: #666; margin-top: 0;">Proszę zapisać swój numer zamówienia:</p>
+        
+        <div class="receipt-number-badge" id="receiptOrderNum">#101</div>
+        
+        <div class="receipt-details" id="receiptSummaryContent"></div>
+
+        <button type="button" class="btn-primary" id="receiptNextBtn" onclick="proceedToThankYou()" style="font-size: 15px; padding: 10px;">Dalej ➔</button>
+        <div style="font-size: 11px; color: #7f8c8d; margin-top: 8px;"><span id="receiptAutoText">Automatyczne przejście dalej za:</span> <b id="receiptAutoNextSec">10</b>s</div>
+    </div>
+</div>
+
+<!-- EKRAN PODZIĘKOWAŃ Z LICZNIKIEM KOŁOWYM -->
+<div id="thankYouOverlay">
+    <div class="popup-card" style="background: linear-gradient(135deg, #27ae60, #2ecc71); color: white;">
+        <div style="font-size: 40px;">🎉</div>
+        <h2 id="thankYouTitle">Dziękujemy za zamówienie!</h2>
+        <p id="thankYouSub" style="font-size: 13px; opacity: 0.9;">Twoje zamówienie trafiło do kuchni.</p>
+        
+        <div class="countdown-circle" id="countdownDisplay">5</div>
+        <p id="thankYouReturn" style="font-size: 12px; opacity: 0.8;">Powrót do ekranu głównego...</p>
+    </div>
+</div>
+
+<div class="container">
+    <div class="top-bar">
+        <button type="button" class="btn-exit-top" onclick="returnToWelcomeScreen()">
+            🚪 <span id="lblExitTop">Wyjdź</span>
+        </button>
+        <span id="selectedOrderTypeBadge" class="badge-type" style="display:none;">🍽️ Na miejscu</span>
+    </div>
+
+    <h1 id="mainTitle">🍕 System Zamówień 🥤</h1>
+    
+    <form id="reservationForm">
+        <div class="form-group">
+            <label for="category" id="lblCategory">Co wybierasz?</label>
+            <select id="category" onchange="handleCategoryChange()" required></select>
+        </div>
+
+        <div id="vipUnlockBox" class="vip-unlock-box">
+            <label for="vipInputPassword" id="lblVipPass" style="color: var(--vip-color);">Ta sekcja jest zablokowana. Podaj hasło VIP:</label>
+            <input type="password" id="vipInputPassword" placeholder="Wpisz hasło VIP">
+            <button type="button" class="btn-vip btn-small" id="btnUnlockVip" onclick="verifyVipPassword()" style="margin-top: 10px; width:100%;">Odblokuj Menu VIP</button>
+        </div>
+
+        <div class="dynamic-fields-container" id="dynamicFieldsContainer"></div>
+
+        <div class="form-group">
+            <label for="extras" id="lblExtras">Dodatki (np. sosy, przyprawy) <span class="optional-text">(opcjonalne)</span></label>
+            <input type="text" id="extras" placeholder="Np. sos czosnkowy, ketchup">
+        </div>
+
+        <div class="form-group">
+            <label for="deliveryLocation" id="lblDeliveryLoc">Gdzie mamy to dostarczyć?</label>
+            <select id="deliveryLocation" onchange="handleLocationChange()" required></select>
+            <input type="text" id="customLocationInput" placeholder="Wpisz gdzie dostarczyć..." style="display: none; margin-top: 8px;">
+        </div>
+
+        <div id="vipSpecialFields" class="vip-special-fields">
+            <h3 class="vip-title" id="lblVipTitle">👑 Opcje Ekskluzywne VIP</h3>
+            
+            <div class="form-group">
+                <label id="lblVipWish1">Życzenia w jedzeniu i przekąskach:</label>
+                <div class="help-text" id="lblVipInstruction1">👉 Instrukcja: Wybierz dokładnie 2 opcje z poniższych:</div>
+                <div class="vip-grid" id="gridExtras"></div>
+            </div>
+
+            <div class="form-group">
+                <label id="lblVipWish2">Sposób podania & Domowe Napoje:</label>
+                <div class="help-text" id="lblVipInstruction2">👉 Instrukcja: Wybierz dokładnie 2 opcje z poniższych:</div>
+                <div class="vip-grid" id="gridServing"></div>
+            </div>
+        </div>
+
+        <!-- WŁASNY SYSTEMOWY WYBÓR CZASU I DATA -->
+        <div class="form-group">
+            <label id="lblTimeTarget">Na kiedy ma być gotowe? (Wybierz czas co 30 min):</label>
+            <div class="custom-time-picker">
+                <label for="pickerDate" style="font-size:12px; margin-bottom:3px;" id="lblSelectDate">Wybierz dzień:</label>
+                <input type="date" id="pickerDate" onchange="generateTimeSlots()" required>
+                
+                <div style="font-size:12px; margin-top:10px; font-weight:bold;" id="lblSelectSlot">Dostępne godziny (min. +15 min):</div>
+                <div class="time-grid" id="timeGrid"></div>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="clientName" id="lblClientName">Imię i Nazwisko</label>
+            <input type="text" id="clientName" placeholder="Jan Kowalski" required>
+        </div>
+
+        <div class="form-group">
+            <label id="lblSignature">Podpisz się poniżej (Zamaluj palcem) <span style="color: #e74c3c;">*wymagane</span>:</label>
+            <div class="signature-container">
+                <div class="signature-line"></div>
+                <div class="signature-hint" id="lblSignatureHint">Tutaj złóż podpis</div>
+                <canvas id="signaturePad"></canvas>
+            </div>
+            <button type="button" class="btn-secondary btn-small" id="btnClearSignature" onclick="clearSignature()" style="width:auto; margin-top:0;">Wyczyść podpis</button>
+        </div>
+
+        <button type="submit" id="submitBtn" class="btn-primary">Złóż rezerwację</button>
+    </form>
+
+    <hr>
+
+    <div class="chef-section">
+        <h2 id="lblChefTitle">👨‍🍳 Panel Kucharza 👨‍🍳</h2>
+
+        <div style="margin-bottom: 12px; text-align: center;">
+            <span style="font-size: 12px; font-weight: bold; color: #555; display: block; margin-bottom: 4px;" id="lblChefLang">Język panelu kucharza:</span>
+            <div class="lang-selector" style="margin: 0;">
+                <button type="button" class="lang-btn active" id="chefLangPl" onclick="setChefLanguage('pl')">🇵🇱 PL</button>
+                <button type="button" class="lang-btn" id="chefLangEn" onclick="setChefLanguage('en')">🇬🇧 EN</button>
+                <button type="button" class="lang-btn" id="chefLangDe" onclick="setChefLanguage('de')">🇩🇪 DE</button>
+            </div>
+        </div>
+
+        <div id="loginForm">
+            <div class="form-group">
+                <label for="chefPassword" id="lblChefPass">Podaj hasło kucharza:</label>
+                <input type="password" id="chefPassword" placeholder="Wpisz hasło">
+            </div>
+            <button type="button" class="btn-primary" id="btnChefLogin" onclick="checkPassword()">Wejdź do panelu</button>
+        </div>
+
+        <div id="chefContent" style="display: none;">
+            
+            <div class="switch-container">
+                <span style="font-size:12px; font-weight:bold;" id="lblToggleOrderType">Pokaż wybór Na miejscu / Na wynos na starcie:</span>
+                <label class="switch">
+                    <input type="checkbox" id="orderTypeToggle" onchange="toggleOrderTypeSetting(this.checked)">
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <div class="pass-box">
+                <label for="newPassword" id="lblChangeChefPass">Zmień hasło Kucharza:</label>
+                <input type="text" id="newPassword" placeholder="Nowe hasło" style="margin-bottom: 5px; padding: 6px;">
+                <button type="button" class="btn-edit btn-small" id="btnSaveChefPass" onclick="changePassword('chefPassword', 'newPassword')">Zapisz hasło kucharza</button>
+            </div>
+
+            <div class="pass-box" style="border: 1px solid var(--vip-color);">
+                <label for="newVipPassword" id="lblChangeVipPass" style="color: var(--vip-color);">Zmień hasło VIP:</label>
+                <input type="text" id="newVipPassword" placeholder="Nowe hasło VIP" style="margin-bottom: 5px; padding: 6px;">
+                <button type="button" class="btn-vip btn-small" id="btnSaveVipPass" onclick="changePassword('vipPassword', 'newVipPassword')">Zapisz hasło VIP</button>
+            </div>
+
+            <h3 id="lblOrderListTitle">Lista Zamówień</h3>
+            <div id="reservationsList"></div>
+            
+            <button type="button" class="btn-danger btn-small" id="btnChefLogout" onclick="logoutChef()" style="margin-top: 15px; width: 100%;">Wyloguj się</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentLanguage = 'pl';
+    let currentChefLanguage = 'pl';
+    let selectedOrderType = 'DineIn'; 
+    let selectedTimeSlot = '';
+
+    if (localStorage.getItem('enableOrderType') === null) {
+        localStorage.setItem('enableOrderType', 'true');
+    }
+
+    const locationsDict = {
+        'Pokój': { pl: '🛏️ Pokój', en: '🛏️ Room', de: '🛏️ Zimmer' },
+        'Salon': { pl: '🛋️ Salon', en: '🛋️ Living Room', de: '🛋️ Wohnzimmer' },
+        'Jadalnia': { pl: '🍽️ Jadalnia', en: '🍽️ Dining Room', de: '🍽️ Esszimmer' },
+        'Kuchnia': { pl: '🍳 Kuchnia', en: '🍳 Kitchen', de: '🍳 Küche' },
+        'Sypialnia': { pl: '🛏️ Sypialnia', en: '🛏️ Bedroom', de: '🛏️ Schlafzimmer' },
+        'Pokój dziecięcy': { pl: '🧸 Pokój dziecięcy', en: '🧸 Kids Room', de: '🧸 Kinderzimmer' },
+        'Biurko / Pokój do pracy': { pl: '💻 Biurko / Pokój do pracy', en: '💻 Desk / Office', de: '💻 Schreibtisch / Büro' },
+        'Balkon': { pl: '🌿 Balkon', en: '🌿 Balcony', de: '🌿 Balkon' },
+        'Taras': { pl: '☀️ Taras', en: '☀️ Terrace', de: '☀️ Terrasse' },
+        'Ogród / Podwórko': { pl: '🏡 Ogród / Podwórko', en: '🏡 Garden / Yard', de: '🏡 Garten / Hof' },
+        'Garaż / Warsztat': { pl: '🚗 Garaż / Warsztat', en: '🚗 Garage', de: '🚗 Garage' },
+        'Przed drzwi pokoju': { pl: '🚪 Przed drzwi pokoju', en: '🚪 In front of room door', de: '🚪 Vor der Zimmertür' },
+        'Do łóżka': { pl: '🛌 Do łóżka', en: '🛌 To bed', de: '🛌 Ins Bett' },
+        'Inne': { pl: '📍 Inne miejsce...', en: '📍 Other location...', de: '📍 Anderer Ort...' }
+    };
+
+    const categoriesDict = {
+        'Jedzenie': { pl: '🍕 Jedzenie', en: '🍕 Food', de: '🍕 Essen' },
+        'Picie': { pl: '🥤 Picie', en: '🥤 Drink', de: '🥤 Getränk' },
+        'Przekąski': { pl: '🍿 Przekąski', en: '🍿 Snacks', de: '🍿 Snacks' },
+        'Jedzenie i Picie': { pl: '🍕🥤 Jedzenie i Picie', en: '🍕🥤 Food & Drink', de: '🍕🥤 Essen & Getränk' },
+        'Jedzenie i Przekąski': { pl: '🍕🍿 Jedzenie i Przekąski', en: '🍕🍿 Food & Snacks', de: '🍕🍿 Essen & Snacks' },
+        'Picie i Przekąski': { pl: '🥤🍿 Picie i Przekąski', en: '🥤🍿 Drinks & Snacks', de: '🥤🍿 Getränke & Snacks' },
+        'Wszystko (Jedzenie, Picie i Przekąski)': { pl: '🍕🥤🍿 Wszystko', en: '🍕🥤🍿 Everything', de: '🍕🥤🍿 Alles' },
+        'VIP': { pl: '⭐ Opcja VIP (Hasło)', en: '⭐ VIP Option (Password)', de: '⭐ VIP-Option (Passwort)' }
+    };
+
+    const uiTranslations = {
+        pl: {
+            title: "Witamy w systemie rezerwacji!",
+            subtitle: "Wybierz język, aby rozpocząć zamówienie:",
+            startBtn: "Wejdź ➔",
+            chefToggle: "🔑 Szybkie logowanie kucharza",
+            exitTop: "Wyjdź",
+            mainTitle: "🍕 System Zamówień 🥤",
+            category: "Co wybierasz?",
+            extras: "Dodatki (np. sosy, przyprawy) (opcjonalne)",
+            deliveryLoc: "Gdzie mamy to dostarczyć?",
+            vipTitle: "👑 Opcje Ekskluzywne VIP",
+            timeTarget: "Na kiedy ma być gotowe? (Wybierz czas co 30 min):",
+            selectDate: "Wybierz dzień:",
+            selectSlot: "Dostępne godziny (min. +15 min):",
+            clientName: "Imię i Nazwisko",
+            signature: "Podpisz się poniżej (Zamaluj palcem) *wymagane:",
+            signatureHint: "Tutaj złóż podpis",
+            clearSig: "Wyczyść podpis",
+            submitBtn: "Złóż rezerwację",
+            dineIn: "Na miejscu",
+            takeAway: "Na wynos",
+            inactTitle: "Czy nadal tu jesteś?",
+            inactDesc: "Brak aktywności. Ekran zamknie się za:",
+            btnStay: "Tak, jestem!",
+            btnExit: "Wyjdź",
+            recAccepted: "Zamówienie przyjęte!",
+            recSaveNum: "Proszę zapisać swój numer zamówienia:",
+            recNext: "Dalej ➔",
+            recAuto: "Automatyczne przejście dalej za:",
+            thxTitle: "Dziękujemy za zamówienie!",
+            thxSub: "Twoje zamówienie trafiło do kuchni.",
+            thxReturn: "Powrót do ekranu głównego..."
+        },
+        en: {
+            title: "Welcome to the reservation system!",
+            subtitle: "Choose your language to start your order:",
+            startBtn: "Enter ➔",
+            chefToggle: "🔑 Quick Chef Login",
+            exitTop: "Exit",
+            mainTitle: "🍕 Order System 🥤",
+            category: "What do you choose?",
+            extras: "Extras (e.g. sauces, spices) (optional)",
+            deliveryLoc: "Where should we deliver it?",
+            vipTitle: "👑 Exclusive VIP Options",
+            timeTarget: "When should it be ready? (Select time every 30 min):",
+            selectDate: "Select date:",
+            selectSlot: "Available times (min. +15 min):",
+            clientName: "First & Last Name",
+            signature: "Sign below (Draw with finger) *required:",
+            signatureHint: "Sign here",
+            clearSig: "Clear signature",
+            submitBtn: "Place Reservation",
+            dineIn: "Dine In",
+            takeAway: "Take Away",
+            inactTitle: "Are you still here?",
+            inactDesc: "No activity detected. Screen closes in:",
+            btnStay: "Yes, I'm here!",
+            btnExit: "Exit",
+            recAccepted: "Order Accepted!",
+            recSaveNum: "Please write down your order number:",
+            recNext: "Next ➔",
+            recAuto: "Automatic transition in:",
+            thxTitle: "Thank you for your order!",
+            thxSub: "Your order has been sent to the kitchen.",
+            thxReturn: "Returning to main screen..."
+        },
+        de: {
+            title: "Willkommen im Reservierungssystem!",
+            subtitle: "Wählen Sie Ihre Sprache, um zu bestellen:",
+            startBtn: "Eintreten ➔",
+            chefToggle: "🔑 Schneller Koch-Login",
+            exitTop: "Beenden",
+            mainTitle: "🍕 Bestellsystem 🥤",
+            category: "Was wählen Sie?",
+            extras: "Extras (z. B. Soßen, Gewürze) (optional)",
+            deliveryLoc: "Wohin sollen wir es liefern?",
+            vipTitle: "👑 Exklusive VIP-Optionen",
+            timeTarget: "Wann soll es fertig sein? (Wählen Sie alle 30 Min):",
+            selectDate: "Datum wählen:",
+            selectSlot: "Verfügbare Zeiten (mind. +15 Min):",
+            clientName: "Vor- und Nachname",
+            signature: "Unten unterschreiben (Mit dem Finger zeichnen) *erforderlich:",
+            signatureHint: "Hier unterschreiben",
+            clearSig: "Unterschrift löschen",
+            submitBtn: "Bestellung aufgeben",
+            dineIn: "Vor Ort",
+            takeAway: "Zum Mitnehmen",
+            inactTitle: "Bist du noch da?",
+            inactDesc: "Keine Aktivität. Bildschirm schließt in:",
+            btnStay: "Ja, ich bin da!",
+            btnExit: "Beenden",
+            recAccepted: "Bestellung angenommen!",
+            recSaveNum: "Bitte notieren Sie Ihre Bestellnummer:",
+            recNext: "Weiter ➔",
+            recAuto: "Automatische Weiterleitung in:",
+            thxTitle: "Vielen Dank für Ihre Bestellung!",
+            thxSub: "Ihre Bestellung wurde an die Küche gesendet.",
+            thxReturn: "Zurück zum Hauptbildschirm..."
+        }
+    };
+
+    function populateSelects() {
+        const catSelect = document.getElementById('category');
+        const locSelect = document.getElementById('deliveryLocation');
+        
+        const curCat = catSelect.value || 'Jedzenie';
+        const curLoc = locSelect.value || 'Pokój';
+
+        catSelect.innerHTML = '';
+        Object.keys(categoriesDict).forEach(key => {
+            const opt = document.createElement('option');
+            opt.value = key;
+            opt.innerText = categoriesDict[key][currentLanguage];
+            catSelect.appendChild(opt);
+        });
+        catSelect.value = curCat;
+
+        locSelect.innerHTML = '';
+        Object.keys(locationsDict).forEach(key => {
+            const opt = document.createElement('option');
+            opt.value = key;
+            opt.innerText = locationsDict[key][currentLanguage];
+            locSelect.appendChild(opt);
+        });
+        locSelect.value = curLoc;
+    }
+
+    function setLanguage(lang) {
+        currentLanguage = lang;
+        document.querySelectorAll('#welcomeOverlay .lang-btn').forEach(btn => btn.classList.remove('active'));
+        event.target.classList.add('active');
+
+        const t = uiTranslations[lang];
+        document.getElementById('welcomeTitle').innerText = t.title;
+        document.getElementById('welcomeSubtitle').innerText = t.subtitle;
+        document.getElementById('startBtnText').innerText = t.startBtn;
+        document.getElementById('chefLoginToggleText').innerText = t.chefToggle;
+        
+        document.getElementById('lblExitTop').innerText = t.exitTop;
+        document.getElementById('mainTitle').innerText = t.mainTitle;
+        document.getElementById('lblCategory').innerText = t.category;
+        document.getElementById('lblExtras').innerText = t.extras;
+        document.getElementById('lblDeliveryLoc').innerText = t.deliveryLoc;
+        document.getElementById('lblVipTitle').innerText = t.vipTitle;
+        document.getElementById('lblTimeTarget').innerText = t.timeTarget;
+        document.getElementById('lblSelectDate').innerText = t.selectDate;
+        document.getElementById('lblSelectSlot').innerText = t.selectSlot;
+        document.getElementById('lblClientName').innerText = t.clientName;
+        document.getElementById('lblSignature').innerText = t.signature;
+        document.getElementById('lblSignatureHint').innerText = t.signatureHint;
+        document.getElementById('btnClearSignature').innerText = t.clearSig;
+        document.getElementById('submitBtn').innerText = t.submitBtn;
+
+        document.getElementById('lblDineIn').innerText = t.dineIn;
+        document.getElementById('lblTakeAway').innerText = t.takeAway;
+
+        document.getElementById('inactivityTitle').innerText = t.inactTitle;
+        document.getElementById('inactivityDesc').innerText = t.inactDesc;
+        document.getElementById('btnStayHere').innerText = t.btnStay;
+        document.getElementById('btnExitNow').innerText = t.btnExit;
+
+        document.getElementById('receiptAcceptedTitle').innerText = t.recAccepted;
+        document.getElementById('receiptSaveNumText').innerText = t.recSaveNum;
+        document.getElementById('receiptNextBtn').innerText = t.recNext;
+        document.getElementById('receiptAutoText').innerText = t.recAuto;
+
+        document.getElementById('thankYouTitle').innerText = t.thxTitle;
+        document.getElementById('thankYouSub').innerText = t.thxSub;
+        document.getElementById('thankYouReturn').innerText = t.thxReturn;
+
+        populateSelects();
+        updateDynamicFields();
+    }
+
+    function updateOrderTypeVisibility() {
+        const enabled = localStorage.getItem('enableOrderType') === 'true';
+        const toggleEl = document.getElementById('orderTypeToggle');
+        if(toggleEl) toggleEl.checked = enabled;
+
+        const wrapper = document.getElementById('orderTypeWrapper');
+        const startBtn = document.getElementById('startBtnText');
+        
+        if(enabled) {
+            wrapper.style.display = 'flex';
+            startBtn.style.display = 'none';
+        } else {
+            wrapper.style.display = 'none';
+            startBtn.style.display = 'block';
+        }
+    }
+
+    function toggleOrderTypeSetting(val) {
+        localStorage.setItem('enableOrderType', val);
+        updateOrderTypeVisibility();
+    }
+
+    function selectOrderType(type) {
+        selectedOrderType = type;
+        const badge = document.getElementById('selectedOrderTypeBadge');
+        if (type !== 'Standard') {
+            badge.style.display = 'inline-block';
+            badge.innerText = type === 'DineIn' ? `🍽️ ${uiTranslations[currentLanguage].dineIn}` : `🛍️ ${uiTranslations[currentLanguage].takeAway}`;
+        } else {
+            badge.style.display = 'none';
+        }
+        closeWelcome();
+    }
+
+    function initCustomDatePicker() {
+        const dateInput = document.getElementById('pickerDate');
+        const today = new Date();
+        const yyyy = today.getFullYear();
+        const mm = String(today.getMonth() + 1).padStart(2, '0');
+        const dd = String(today.getDate()).padStart(2, '0');
+        
+        dateInput.value = `${yyyy}-${mm}-${dd}`;
+        dateInput.min = `${yyyy}-${mm}-${dd}`;
+        generateTimeSlots();
+    }
+
+    function generateTimeSlots() {
+        const grid = document.getElementById('timeGrid');
+        grid.innerHTML = '';
+        selectedTimeSlot = '';
+
+        const selectedDateVal = document.getElementById('pickerDate').value;
+        if(!selectedDateVal) return;
+
+        const now = new Date();
+        const isToday = selectedDateVal === now.toISOString().split('T')[0];
+
+        for(let hour = 8; hour <= 23; hour++) {
+            for(let min of [0, 30]) {
+                const hStr = String(hour).padStart(2, '0');
+                const mStr = String(min).padStart(2, '0');
+                const slotTimeStr = `${hStr}:${mStr}`;
+
+                const slotDiv = document.createElement('div');
+                slotDiv.className = 'time-slot';
+                slotDiv.innerText = slotTimeStr;
+
+                let isDisabled = false;
+                if(isToday) {
+                    const slotDate = new Date();
+                    slotDate.setHours(hour, min, 0, 0);
+                    const diffMinutes = (slotDate.getTime() - now.getTime()) / (1000 * 60);
+                    if(diffMinutes < 15) {
+                        isDisabled = true;
+                    }
+                }
+
+                if(isDisabled) {
+                    slotDiv.classList.add('disabled');
+                } else {
+                    slotDiv.onclick = function() {
+                        document.querySelectorAll('.time-slot').forEach(s => s.classList.remove('selected'));
+                        slotDiv.classList.add('selected');
+                        selectedTimeSlot = slotTimeStr;
+                    };
+                }
+
+                grid.appendChild(slotDiv);
+            }
+        }
+    }
+
+    let idleTimer = null;
+    let inactivityCountdownTimer = null;
+
+    function resetIdleTimer() {
+        if(document.getElementById('welcomeOverlay').style.display !== 'none') return;
+        if(document.getElementById('orderSuccessOverlay').style.display === 'flex') return;
+        if(document.getElementById('thankYouOverlay').style.display === 'flex') return;
+
+        clearTimeout(idleTimer);
+        idleTimer = setTimeout(showInactivityPopup, 30000);
+    }
+
+    function showInactivityPopup() {
+        document.getElementById('inactivityOverlay').style.display = 'flex';
+        let sec = 10;
+        document.getElementById('inactivitySecDisplay').innerText = sec;
+
+        if (inactivityCountdownTimer) clearInterval(inactivityCountdownTimer);
+        inactivityCountdownTimer = setInterval(() => {
+            sec--;
+            document.getElementById('inactivitySecDisplay').innerText = sec;
+            if(sec <= 0) {
+                clearInterval(inactivityCountdownTimer);
+                returnToWelcomeScreen();
+            }
+        }, 1000);
+    }
+
+    function keepSessionAlive() {
+        clearInterval(inactivityCountdownTimer);
+        document.getElementById('inactivityOverlay').style.display = 'none';
+        resetIdleTimer();
+    }
+
+    ['mousemove', 'mousedown', 'touchstart', 'keydown', 'scroll'].forEach(evt => {
+        window.addEventListener(evt, resetIdleTimer, true);
+    });
+
+    function returnToWelcomeScreen() {
+        clearInterval(inactivityCountdownTimer);
+        if(receiptTimer) clearInterval(receiptTimer);
+        if(countdownTimer) clearInterval(countdownTimer);
+
+        document.getElementById('inactivityOverlay').style.display = 'none';
+        document.getElementById('orderSuccessOverlay').style.display = 'none';
+        document.getElementById('thankYouOverlay').style.display = 'none';
+
+        document.getElementById('reservationForm').reset();
+        isVipUnlocked = false;
+        clearSignature();
+        clearGrids();
+        handleCategoryChange();
+        initCustomDatePicker();
+
+        updateOrderTypeVisibility();
+        document.getElementById('welcomeOverlay').style.display = 'flex';
+    }
+
+    function closeWelcome() {
+        initCustomDatePicker();
+        const overlay = document.getElementById('welcomeOverlay');
+        overlay.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
+        overlay.style.opacity = '0';
+        overlay.style.transform = 'scale(1.05)';
+        setTimeout(() => {
+            overlay.style.display = 'none';
+            overlay.style.opacity = '1';
+            overlay.style.transform = 'scale(1)';
+            resetIdleTimer();
+        }, 400);
+    }
+
+    function quickChefLogin() {
+        const entered = document.getElementById('startChefPass').value;
+        const current = localStorage.getItem('chefPassword');
+        if (entered === current) {
+            closeWelcome();
+            document.getElementById('loginForm').style.display = 'none';
+            document.getElementById('chefContent').style.display = 'block';
+            autoCleanOldReservations(); 
+            renderReservations();
+            window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+        } else {
+            alert('Błędne hasło kucharza!');
+        }
+    }
+
+    let receiptTimer = null;
+    let countdownTimer = null;
+
+    function startReceiptAutoTimer() {
+        let secLeft = 10;
+        document.getElementById('receiptAutoNextSec').innerText = secLeft;
+        if (receiptTimer) clearInterval(receiptTimer);
+
+        receiptTimer = setInterval(() => {
+            secLeft--;
+            document.getElementById('receiptAutoNextSec').innerText = secLeft;
+            if (secLeft <= 0) {
+                clearInterval(receiptTimer);
+                proceedToThankYou();
+            }
+        }, 1000);
+    }
+
+    function proceedToThankYou() {
+        if (receiptTimer) clearInterval(receiptTimer);
+        document.getElementById('orderSuccessOverlay').style.display = 'none';
+        document.getElementById('thankYouOverlay').style.display = 'flex';
+        
+        let secondsLeft = 5;
+        document.getElementById('countdownDisplay').innerText = secondsLeft;
+
+        if (countdownTimer) clearInterval(countdownTimer);
+        
+        countdownTimer = setInterval(() => {
+            secondsLeft--;
+            document.getElementById('countdownDisplay').innerText = secondsLeft;
+            if (secondsLeft <= 0) {
+                clearInterval(countdownTimer);
+                returnToWelcomeScreen();
+            }
+        }, 1000);
+    }
+
+    if (!localStorage.getItem('chefPassword')) localStorage.setItem('chefPassword', '7987');
+    if (!localStorage.getItem('vipPassword')) localStorage.setItem('vipPassword', '9999'); 
+    if (!localStorage.getItem('reservations')) localStorage.setItem('reservations', JSON.stringify([]));
+    if (!localStorage.getItem('orderCounter')) localStorage.setItem('orderCounter', '101');
+
+    let reservations = JSON.parse(localStorage.getItem('reservations'));
+    let editingId = null; 
+    let isVipUnlocked = false; 
+
+    const foodAndSnackHTMLOptions = `
+        <option value="🍽️ porcja">🍽️ Porcja / Porcje</option>
+        <option value="🍰 kawałek">🍰 Kawałek / Kawałki</option>
+        <option value="📦 sztuka">📦 Sztuka / Sztuki</option>
+        <option value="🍃 listek">🍃 Listek / Listki</option>
+        <option value="⚖️ g">⚖️ Gramy (g)</option>
+    `;
+    
+    const drinkHTMLOptions = `
+        <option value="🥛 szklanka">🥛 Szklanka / Szklanki</option>
+        <option value="☕ duży kubek">☕ Duży kubek / Kubki</option>
+        <option value="🍵 mały kubek / filiżanka">🍵 Mały kubek / Filiżanka</option>
+        <option value="🍾 butelka">🍾 Butelka / Butelki</option>
+        <option value="💧 ml">💧 Mililitry (ml)</option>
+    `;
+
+    const canvas = document.getElementById('signaturePad');
+    const ctx = canvas.getContext('2d');
+    let isDrawing = false;
+    let lastX = 0; let lastY = 0;
+    let isCanvasBlank = true; 
+
+    function resizeCanvas() {
+        let tempCanvas = document.createElement('canvas');
+        tempCanvas.width = canvas.width;
+        tempCanvas.height = canvas.height;
+        let tempCtx = tempCanvas.getContext('2d');
+        tempCtx.drawImage(canvas, 0, 0);
+
+        canvas.width = canvas.parentElement.clientWidth;
+        canvas.height = 150;
+        
+        ctx.strokeStyle = "#2c3e50";
+        ctx.lineWidth = 3;
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+
+        if (!isCanvasBlank) {
+            ctx.drawImage(tempCanvas, 0, 0);
+            const hint = document.querySelector('.signature-hint');
+            if(hint) hint.style.opacity = '0';
+        }
+    }
+    window.addEventListener('resize', resizeCanvas);
+    setTimeout(resizeCanvas, 100);
+
+    function getEventPos(e) {
+        const rect = canvas.getBoundingClientRect();
+        if (e.touches && e.touches.length > 0) {
+            return { x: e.touches[0].clientX - rect.left, y: e.touches[0].clientY - rect.top };
+        } else {
+            return { x: e.offsetX !== undefined ? e.offsetX : e.clientX - rect.left, y: e.offsetY !== undefined ? e.offsetY : e.clientY - rect.top };
+        }
+    }
+
+    function startDrawing(e) {
+        isDrawing = true;
+        isCanvasBlank = false; 
+        const pos = getEventPos(e);
+        lastX = pos.x; lastY = pos.y;
+        const hint = document.querySelector('.signature-hint');
+        if(hint) hint.style.opacity = '0';
+        ctx.beginPath();
+        ctx.arc(lastX, lastY, ctx.lineWidth / 2, 0, Math.PI * 2);
+        ctx.fillStyle = ctx.strokeStyle;
+        ctx.fill();
+    }
+
+    function draw(e) {
+        if (!isDrawing) return;
+        const pos = getEventPos(e);
+        ctx.beginPath(); ctx.moveTo(lastX, lastY); ctx.lineTo(pos.x, pos.y); ctx.stroke();
+        lastX = pos.x; lastY = pos.y;
+    }
+
+    function stopDrawing() { isDrawing = false; }
+    canvas.addEventListener('mousedown', startDrawing);
+    canvas.addEventListener('mousemove', draw);
+    window.addEventListener('mouseup', stopDrawing);
+    canvas.addEventListener('touchstart', startDrawing);
+    canvas.addEventListener('touchmove', draw);
+    window.addEventListener('touchend', stopDrawing);
+
+    function clearSignature() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        isCanvasBlank = true; 
+        const hint = document.querySelector('.signature-hint');
+        if(hint) hint.style.opacity = '1';
+    }
+
+    function handleLocationChange() {
+        const select = document.getElementById('deliveryLocation');
+        const customInput = document.getElementById('customLocationInput');
+        if (select.value === 'Inne') {
+            customInput.style.display = 'block';
+            customInput.required = true;
+        } else {
+            customInput.style.display = 'none';
+            customInput.required = false;
+            customInput.value = '';
+        }
+    }
+
+    function getSelectedLocation() {
+        const select = document.getElementById('deliveryLocation');
+        if (select.value === 'Inne') return document.getElementById('customLocationInput').value;
+        return select.value;
+    }
+
+    function setupGridSelection(gridId) {
+        const container = document.getElementById(gridId);
+        const options = container.getElementsByClassName('vip-option');
+        for (let option of options) {
+            option.addEventListener('click', function() {
+                const selectedOptions = container.querySelectorAll('.vip-option.selected');
+                if (this.classList.contains('selected')) {
+                    this.classList.remove('selected');
+                } else {
+                    if (selectedOptions.length >= 2) {
+                        alert("Możesz wybrać maksymalnie 2 opcje!");
+                    } else {
+                        this.classList.add('selected');
+                    }
+                }
+            });
+        }
+    }
+    setupGridSelection('gridExtras');
+    setupGridSelection('gridServing');
+
+    function getGridValues(gridId) {
+        const container = document.getElementById(gridId);
+        const selected = container.querySelectorAll('.vip-option.selected');
+        const values = [];
+        selected.forEach(el => values.push(el.getAttribute('data-value')));
+        return values.length > 0 ? values.join(' + ') : 'Brak';
+    }
+
+    function clearGrids() {
+        document.querySelectorAll('.vip-option').forEach(el => el.classList.remove('selected'));
+    }
+
+    function updateDynamicFields() {
+        const category = document.getElementById('category').value;
+        const container = document.getElementById('dynamicFieldsContainer');
+        container.innerHTML = '';
+        let configs = [];
+
+        const needFood = ['Jedzenie', 'Jedzenie i Picie', 'Jedzenie i Przekąski', 'Wszystko (Jedzenie, Picie i Przekąski)', 'VIP'].includes(category);
+        const needDrinks = ['Picie', 'Jedzenie i Picie', 'Picie i Przekąski', 'Wszystko (Jedzenie, Picie i Przekąski)', 'VIP'].includes(category);
+        const needSnacks = ['Przekąski', 'Jedzenie i Przekąski', 'Picie i Przekąski', 'Wszystko (Jedzenie, Picie i Przekąski)', 'VIP'].includes(category);
+
+        if (needFood) {
+            configs.push({
+                id: 'order_food',
+                label: '🍕 ' + (category === 'VIP' ? 'Zamówienie na Jedzenie (opcjonalne):' : 'Co z jedzenia chcesz zamówić?'),
+                placeholder: 'Wpisz swoje zamówienie...',
+                units: foodAndSnackHTMLOptions
+            });
+        }
+        if (needDrinks) {
+            configs.push({
+                id: 'order_drinks',
+                label: '🥤 ' + (category === 'VIP' ? 'Zamówienie na Picie (opcjonalne):' : 'Co do picia chcesz zamówić?'),
+                placeholder: 'Wpisz swoje zamówienie...',
+                units: drinkHTMLOptions
+            });
+        }
+        if (needSnacks) {
+            configs.push({
+                id: 'order_snacks',
+                label: '🍿 ' + (category === 'VIP' ? 'Zamówienie na Przekąski (opcjonalne):' : 'Jakie przekąski chcesz zamówić?'),
+                placeholder: 'Wpisz swoje zamówienie...',
+                units: foodAndSnackHTMLOptions
+            });
+        }
+
+        configs.forEach(conf => {
+            const div = document.createElement('div');
+            div.className = 'sub-field';
+            div.innerHTML = `
+                <label for="${conf.id}">${conf.label}</label>
+                <textarea id="${conf.id}" rows="2" placeholder="${conf.placeholder}"></textarea>
+                <div class="amount-group">
+                    <select id="${conf.id}_unit">${conf.units}</select>
+                    <input type="text" id="${conf.id}_val" placeholder="Ile?">
+                </div>
+            `;
+            container.appendChild(div);
+        });
+    }
+
+    function handleCategoryChange() {
+        const category = document.getElementById('category').value;
+        const vipBox = document.getElementById('vipUnlockBox');
+        const vipFields = document.getElementById('vipSpecialFields');
+
+        updateDynamicFields();
+
+        if (category === 'VIP') {
+            if (!isVipUnlocked) {
+                vipBox.style.display = 'block';
+                vipFields.style.display = 'none';
+                document.getElementById('submitBtn').disabled = true;
+                document.getElementById('submitBtn').style.opacity = "0.5";
+            } else {
+                vipBox.style.display = 'none';
+                vipFields.style.display = 'block';
+            }
+            document.getElementById('submitBtn').className = "btn-vip";
+        } else {
+            vipBox.style.display = 'none';
+            vipFields.style.display = 'none';
+            document.getElementById('submitBtn').disabled = false;
+            document.getElementById('submitBtn').style.opacity = "1";
+            document.getElementById('submitBtn').className = "btn-primary";
+        }
+    }
+
+    function verifyVipPassword() {
+        const entered = document.getElementById('vipInputPassword').value;
+        const correct = localStorage.getItem('vipPassword');
+        if (entered === correct) {
+            isVipUnlocked = true;
+            document.getElementById('vipUnlockBox').style.display = 'none';
+            document.getElementById('vipSpecialFields').style.display = 'block';
+            document.getElementById('submitBtn').disabled = false;
+            document.getElementById('submitBtn').style.opacity = "1";
+            alert('Strefa VIP odblokowana!');
+        } else {
+            alert('Niepoprawne hasło VIP!');
+        }
+    }
+
+    function autoCleanOldReservations() {
+        const now = new Date().getTime();
+        let currentReservations = JSON.parse(localStorage.getItem('reservations')) || [];
+        let updatedReservations = currentReservations.filter(res => {
+            if (!res.timeTarget) return true; 
+            const targetTime = new Date(res.timeTarget).getTime();
+            return now <= (targetTime + 300000);
+        });
+
+        if (currentReservations.length !== updatedReservations.length) {
+            reservations = updatedReservations;
+            localStorage.setItem('reservations', JSON.stringify(reservations));
+            if (document.getElementById('chefContent').style.display === 'block') {
+                renderReservations();
+            }
+        }
+    }
+    setInterval(autoCleanOldReservations, 60000);
+
+    document.getElementById('reservationForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const category = document.getElementById('category').value;
+
+        if (isCanvasBlank) {
+            alert('Błąd: Musisz złożyć podpis palcem, aby zatwierdzić zamówienie!');
+            return; 
+        }
+
+        if (!selectedTimeSlot) {
+            alert('Błąd: Musisz wybrać godzinę z listy dostępnych kafelków!');
+            return;
+        }
+
+        const selectedDateVal = document.getElementById('pickerDate').value;
+        const fullTargetTime = `${selectedDateVal} ${selectedTimeSlot}`;
+
+        const foodText = document.getElementById('order_food') ? document.getElementById('order_food').value.trim() : '';
+        const foodVal = document.getElementById('order_food_val') ? document.getElementById('order_food_val').value.trim() : '';
+        const foodUnit = document.getElementById('order_food_unit') ? document.getElementById('order_food_unit').value : '';
+
+        const drinksText = document.getElementById('order_drinks') ? document.getElementById('order_drinks').value.trim() : '';
+        const drinksVal = document.getElementById('order_drinks_val') ? document.getElementById('order_drinks_val').value.trim() : '';
+        const drinksUnit = document.getElementById('order_drinks_unit') ? document.getElementById('order_drinks_unit').value : '';
+
+        const snacksText = document.getElementById('order_snacks') ? document.getElementById('order_snacks').value.trim() : '';
+        const snacksVal = document.getElementById('order_snacks_val') ? document.getElementById('order_snacks_val').value.trim() : '';
+        const snacksUnit = document.getElementById('order_snacks_unit') ? document.getElementById('order_snacks_unit').value : '';
+
+        const structuredOrder = {};
+        if (foodText) structuredOrder.food = { text: foodText, amount: `${foodVal} ${foodUnit}` };
+        if (drinksText) structuredOrder.drinks = { text: drinksText, amount: `${drinksVal} ${drinksUnit}` };
+        if (snacksText) structuredOrder.snacks = { text: snacksText, amount: `${snacksVal} ${snacksUnit}` };
+
+        let currentOrderNum = parseInt(localStorage.getItem('orderCounter')) || 101;
+        let orderCode = "#" + currentOrderNum;
+        localStorage.setItem('orderCounter', currentOrderNum + 1);
+
+        const reservationData = {
+            id: editingId ? editingId : Date.now(),
+            orderNumber: orderCode,
+            orderType: selectedOrderType,
+            category: category,
+            orderContent: JSON.stringify(structuredOrder),
+            extras: document.getElementById('extras').value,
+            location: getSelectedLocation(),
+            vipPremiumExtras: category === 'VIP' ? getGridValues('gridExtras') : 'Brak',
+            vipServing: category === 'VIP' ? getGridValues('gridServing') : 'Standardowe',
+            timeTarget: fullTargetTime,
+            clientName: document.getElementById('clientName').value,
+            signature: canvas.toDataURL() 
+        };
+
+        if (editingId) {
+            const existing = reservations.find(r => r.id === editingId);
+            if(existing && existing.orderNumber) reservationData.orderNumber = existing.orderNumber;
+
+            reservations = reservations.map(res => res.id === editingId ? reservationData : res);
+            editingId = null;
+            document.getElementById('submitBtn').innerText = uiTranslations[currentLanguage].submitBtn;
+            renderReservations();
+            alert('Zmiany w zamówieniu zostały zapisane.');
+            return;
+        } else {
+            reservations.push(reservationData);
+        }
+
+        localStorage.setItem('reservations', JSON.stringify(reservations));
+        
+        document.getElementById('receiptOrderNum').innerText = orderCode;
+        
+        let typeLabel = selectedOrderType === 'DineIn' ? '🍽️ Na miejscu' : (selectedOrderType === 'TakeAway' ? '🛍️ Na wynos' : 'Standard');
+        let summaryHTML = `<b>Typ:</b> ${typeLabel}<br>`;
+        summaryHTML += `<b>Klient:</b> ${reservationData.clientName}<br>`;
+        if(foodText) summaryHTML += `🍕 Jedzenie: ${foodText}<br>`;
+        if(drinksText) summaryHTML += `🥤 Picie: ${drinksText}<br>`;
+        if(snacksText) summaryHTML += `🍿 Przekąski: ${snacksText}<br>`;
+        summaryHTML += `📍 Miejsce: ${locationsDict[reservationData.location] ? locationsDict[reservationData.location][currentLanguage] : reservationData.location}<br>`;
+        summaryHTML += `🕒 Czas: ${fullTargetTime}`;
+        
+        document.getElementById('receiptSummaryContent').innerHTML = summaryHTML;
+        document.getElementById('orderSuccessOverlay').style.display = 'flex';
+        
+        startReceiptAutoTimer();
+        renderReservations();
+    });
+
+    function setChefLanguage(lang) {
+        currentChefLanguage = lang;
+        document.getElementById('chefLangPl').classList.remove('active');
+        document.getElementById('chefLangEn').classList.remove('active');
+        document.getElementById('chefLangDe').classList.remove('active');
+        
+        if(lang === 'pl') document.getElementById('chefLangPl').classList.add('active');
+        if(lang === 'en') document.getElementById('chefLangEn').classList.add('active');
+        if(lang === 'de') document.getElementById('chefLangDe').classList.add('active');
+
+        renderReservations();
+    }
+
+    function checkPassword() {
+        const entered = document.getElementById('chefPassword').value;
+        const current = localStorage.getItem('chefPassword');
+        if (entered === current) {
+            document.getElementById('loginForm').style.display = 'none';
+            document.getElementById('chefContent').style.display = 'block';
+            autoCleanOldReservations(); 
+            renderReservations();
+        } else {
+            alert('Błędne hasło kucharza!');
+        }
+    }
+
+    function logoutChef() {
+        document.getElementById('chefPassword').value = '';
+        document.getElementById('loginForm').style.display = 'block';
+        document.getElementById('chefContent').style.display = 'none';
+    }
+
+    function changePassword(localStorageKey, inputFieldId) {
+        const newPass = document.getElementById(inputFieldId).value;
+        if (newPass.trim() !== "") {
+            localStorage.setItem(localStorageKey, newPass);
+            alert('Hasło zmienione!');
+            document.getElementById(inputFieldId).value = '';
+        } else {
+            alert('Hasło nie może być puste!');
+        }
+    }
+
+    function renderReservations() {
+        const listContainer = document.getElementById('reservationsList');
+        listContainer.innerHTML = '';
+
+        if (reservations.length === 0) {
+            listContainer.innerHTML = `<p style="text-align:center; font-size:12px; color:#777;">Brak zamówień.</p>`;
+            return;
+        }
+
+        reservations.forEach(res => {
+            const card = document.createElement('div');
+            const isVip = res.category === 'VIP';
+            card.className = `reservation-card ${isVip ? 'vip-card' : ''}`;
+            
+            const orderNumBadge = res.orderNumber ? `<span style="background:var(--accent-color); color:white; padding:2px 6px; border-radius:4px; font-weight:bold; margin-right:5px;">${res.orderNumber}</span>` : '';
+            const typeText = res.orderType === 'TakeAway' ? '🛍️ Na wynos' : (res.orderType === 'DineIn' ? '🍽️ Na miejscu' : 'Standard');
+            const locText = locationsDict[res.location] ? locationsDict[res.location][currentChefLanguage] : res.location;
+
+            let itemsHtml = '';
+            try {
+                const orderData = JSON.parse(res.orderContent);
+                if (orderData.food) itemsHtml += `<div class="chef-order-item">🍕 <b>Jedzenie:</b> ${orderData.food.text} (${orderData.food.amount})</div>`;
+                if (orderData.drinks) itemsHtml += `<div class="chef-order-item">🥤 <b>Picie:</b> ${orderData.drinks.text} (${orderData.drinks.amount})</div>`;
+                if (orderData.snacks) itemsHtml += `<div class="chef-order-item">🍿 <b>Przekąski:</b> ${orderData.snacks.text} (${orderData.snacks.amount})</div>`;
+            } catch(e) {
+                itemsHtml = `<div class="chef-order-item">${res.orderContent}</div>`;
+            }
+
+            let signatureHtml = '<em>brak podpisu</em>';
+            if (res.signature && res.signature.startsWith('data:image')) {
+                signatureHtml = `<img src="${res.signature}" class="chef-signature-img" alt="Podpis">`;
+            }
+
+            card.innerHTML = `
+                <div>${orderNumBadge} <span class="badge-type">${typeText}</span> | <b>Klient:</b> ${res.clientName}</div>
+                <div style="margin-top: 5px; margin-bottom: 5px;">${itemsHtml}</div>
+                <div style="margin-bottom: 2px;">📍 <b>Miejsce:</b> <span style="color: #2980b9; font-weight: bold;">${locText}</span></div>
+                <div style="margin-top: 4px; margin-bottom: 4px;">✍️ <b>Podpis:</b> ${signatureHtml}</div>
+                <div style="color: #555; font-size: 11px; margin-top: 2px;">🕒 <b>Czas:</b> ${res.timeTarget}</div>
+                <div class="action-buttons">
+                    <button type="button" class="btn-danger" onclick="window.deleteReservation(${res.id})">Usuń</button>
+                </div>
+            `;
+            listContainer.appendChild(card);
+        });
+    }
+
+    window.deleteReservation = function(id) {
+        if (confirm('Na pewno chcesz usunąć to zamówienie?')) {
+            reservations = reservations.filter(res => res.id !== id);
+            localStorage.setItem('reservations', JSON.stringify(reservations));
+            renderReservations(); 
+        }
+    };
+
+    populateSelects();
+    setLanguage('pl');
+    updateOrderTypeVisibility();
+    initCustomDatePicker();
+</script>
+
+</body>
+</html>
