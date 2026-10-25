@@ -1,0 +1,1155 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kiosk Rezerwacji Gier Planszowych</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Outfit', sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+        }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.6);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #6c5ce7;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #a29bfe;
+        }
+        /* Glassmorphism effects */
+        .glass-panel {
+            background: rgba(30, 27, 75, 0.75);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(168, 85, 247, 0.2);
+        }
+        .glass-card {
+            background: rgba(15, 23, 42, 0.65);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        /* Animated gradient background */
+        .bg-animated {
+            background: linear-gradient(-45deg, #0f172a, #1e1b4b, #2e1065, #0f172a);
+            background-size: 400% 400%;
+            animation: gradientBG 15s ease infinite;
+        }
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        /* Signature Canvas styling */
+        #signatureCanvas {
+            touch-action: none;
+            cursor: crosshair;
+        }
+    </style>
+</head>
+<body class="bg-animated text-slate-100 min-h-screen overflow-x-hidden flex flex-col justify-between">
+
+    <!-- Top Header -->
+    <header class="glass-panel sticky top-0 z-40 px-6 py-4 flex items-center justify-between shadow-2xl">
+        <div class="flex items-center space-x-3">
+            <div class="bg-gradient-to-tr from-purple-600 to-pink-500 p-3 rounded-2xl shadow-lg shadow-purple-500/30">
+                <i class="fa-solid font-black fa-dice-d20 text-2xl text-white animate-spin-slow"></i>
+            </div>
+            <div>
+                <h1 class="text-xl sm:text-2xl font-black tracking-wider bg-gradient-to-r from-purple-300 via-pink-300 to-indigo-200 bg-clip-text text-transparent">
+                    GAME ARENA
+                </h1>
+                <p class="text-xs text-purple-300 font-medium tracking-widest uppercase" data-i18n="subHeader">Kiosk Rezerwacji Stoli</p>
+            </div>
+        </div>
+
+        <!-- Clock & Language & Exit Controls -->
+        <div class="flex items-center space-x-3 sm:space-x-6">
+            <!-- Secret Clock Trigger (Click 5 times quickly) -->
+            <div id="clockBtn" class="glass-card hover:bg-purple-900/40 transition px-4 py-2 rounded-xl cursor-pointer flex items-center space-x-2 border border-purple-500/30 shadow-inner group">
+                <span class="text-xl group-hover:scale-125 transition-transform duration-200">⏱️</span>
+                <span id="liveClock" class="font-mono text-lg font-bold text-purple-200 tracking-wider">00:00:00</span>
+            </div>
+
+            <!-- Language Switcher -->
+            <div class="flex bg-slate-900/80 p-1 rounded-xl border border-purple-500/20">
+                <button onclick="setLanguage('PL')" id="lang-PL" class="px-3 py-1 text-xs font-bold rounded-lg transition duration-200 bg-purple-600 text-white shadow">PL</button>
+                <button onclick="setLanguage('EN')" id="lang-EN" class="px-3 py-1 text-xs font-bold rounded-lg transition duration-200 text-slate-400 hover:text-white">EN</button>
+                <button onclick="setLanguage('DE')" id="lang-DE" class="px-3 py-1 text-xs font-bold rounded-lg transition duration-200 text-slate-400 hover:text-white">DE</button>
+            </div>
+
+            <!-- Exit Kiosk Button -->
+            <button onclick="showWelcomeOverlay()" class="glass-card hover:bg-red-500/20 border border-red-500/30 text-red-300 px-3 py-2 rounded-xl text-sm font-semibold transition flex items-center space-x-1">
+                <i class="fa-solid fa-right-from-bracket"></i>
+                <span class="hidden sm:inline" data-i18n="exitBtn">Wyjdź</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Booking Form Interface -->
+    <main class="max-w-4xl mx-auto w-full p-4 sm:p-6 my-auto">
+        <div class="glass-panel rounded-3xl p-6 sm:p-10 shadow-2xl relative overflow-hidden">
+            <!-- Decorative Glow background blobs -->
+            <div class="absolute -top-24 -left-24 w-60 h-60 bg-purple-600/30 rounded-full blur-3xl pointer-events-none"></div>
+            <div class="absolute -bottom-24 -right-24 w-60 h-60 bg-pink-600/30 rounded-full blur-3xl pointer-events-none"></div>
+
+            <h2 class="text-2xl sm:text-3xl font-extrabold mb-6 text-center text-white flex items-center justify-center space-x-3">
+                <i class="fa-solid fa-chess text-purple-400"></i>
+                <span data-i18n="formTitle">Zarezerwuj Sesję Gry</span>
+            </h2>
+
+            <form id="reservationForm" onsubmit="handleFormSubmit(event)" class="space-y-6 relative z-10">
+                <!-- Field 1: Name -->
+                <div>
+                    <label class="block text-sm font-semibold text-purple-200 mb-2" data-i18n="fieldName">
+                        Imię i Nazwisko *
+                    </label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 pl-4 flex items-center text-purple-400">
+                            <i class="fa-solid fa-user"></i>
+                        </span>
+                        <input type="text" id="playerName" required placeholder="np. Jan Kowalski" 
+                            class="w-full pl-11 pr-4 py-3.5 bg-slate-900/80 border border-purple-500/30 rounded-2xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500 transition text-lg">
+                    </div>
+                </div>
+
+                <!-- Field 2: Select Game -->
+                <div>
+                    <label class="block text-sm font-semibold text-purple-200 mb-2" data-i18n="fieldGame">
+                        Wybór gry planszowej *
+                    </label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 pl-4 flex items-center text-purple-400">
+                            <i class="fa-solid fa-dice"></i>
+                        </span>
+                        <select id="gameSelect" required 
+                            class="w-full pl-11 pr-10 py-3.5 bg-slate-900/80 border border-purple-500/30 rounded-2xl text-white focus:outline-none focus:ring-2 focus:ring-purple-500 transition text-lg appearance-none cursor-pointer">
+                            <!-- Populated dynamically -->
+                        </select>
+                        <span class="absolute inset-y-0 right-0 pr-4 flex items-center text-purple-400 pointer-events-none">
+                            <i class="fa-solid fa-chevron-down"></i>
+                        </span>
+                    </div>
+                    <p id="selectedGameDetails" class="text-xs text-purple-300 mt-2 ml-1 italic font-light"></p>
+                </div>
+
+                <!-- Field 3: Players & Slot -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Players Count -->
+                    <div>
+                        <label class="block text-sm font-semibold text-purple-200 mb-2" data-i18n="fieldPlayers">
+                            Liczba graczy
+                        </label>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 pl-4 flex items-center text-purple-400">
+                                <i class="fa-solid fa-users"></i>
+                            </span>
+                            <input type="number" id="playerCount" min="1" max="12" value="2" required
+                                class="w-full pl-11 pr-4 py-3.5 bg-slate-900/80 border border-purple-500/30 rounded-2xl text-white focus:outline-none focus:ring-2 focus:ring-purple-500 transition text-lg">
+                        </div>
+                    </div>
+
+                    <!-- Time Selection -->
+                    <div>
+                        <label class="block text-sm font-semibold text-purple-200 mb-2" data-i18n="fieldTime">
+                            Godzina Rezerwacji
+                        </label>
+                        <div class="flex space-x-2">
+                            <button type="button" onclick="setBookingTimeToNow()" 
+                                class="px-4 py-3.5 bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 font-bold rounded-2xl text-white transition flex items-center justify-center space-x-1 shadow-lg shadow-purple-900/40">
+                                <span>⏱️</span>
+                                <span data-i18n="nowBtn">Teraz</span>
+                            </button>
+                            <input type="time" id="bookingTime" required 
+                                class="w-full px-4 py-3.5 bg-slate-900/80 border border-purple-500/30 rounded-2xl text-white focus:outline-none focus:ring-2 focus:ring-purple-500 transition text-lg">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Field 4: Touch/Finger Signature Canvas -->
+                <div>
+                    <div class="flex justify-between items-center mb-2">
+                        <label class="block text-sm font-semibold text-purple-200" data-i18n="fieldSignature">
+                            Podpis elektroniczny *
+                        </label>
+                        <button type="button" onclick="clearSignature()" class="text-xs text-pink-400 hover:text-pink-300 underline font-semibold">
+                            <i class="fa-solid fa-eraser mr-1"></i><span data-i18n="clearSignature">Wyczyść podpis</span>
+                        </button>
+                    </div>
+                    <div class="border-2 border-dashed border-purple-500/40 rounded-2xl overflow-hidden bg-slate-950/60 relative">
+                        <canvas id="signatureCanvas" class="w-full h-36 block"></canvas>
+                        <div id="signaturePlaceholder" class="absolute inset-0 flex items-center justify-center text-slate-500 pointer-events-none text-sm italic">
+                            <i class="fa-solid fa-pen-nib mr-2"></i><span data-i18n="signatureHint">Złóż podpis palcem lub myszką tutaj...</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Submit Button -->
+                <button type="submit" 
+                    class="w-full py-5 bg-gradient-to-r from-purple-600 via-pink-600 to-indigo-600 hover:from-purple-500 hover:via-pink-500 hover:to-indigo-500 text-white font-extrabold text-xl rounded-2xl shadow-xl shadow-purple-900/50 hover:shadow-purple-700/60 active:scale-[0.99] transition transform flex items-center justify-center space-x-3">
+                    <i class="fa-solid fa-circle-check text-2xl"></i>
+                    <span data-i18n="submitBtn">ZŁÓŻ REZERWACJĘ</span>
+                </button>
+            </form>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="py-4 text-center text-slate-400 text-xs font-medium">
+        <p>Game Arena Kiosk System &copy; 2026 • Board Game Club Management</p>
+    </footer>
+
+    <!-- OVERLAY 1: Welcome Screen Kiosk Landing -->
+    <div id="welcomeOverlay" class="fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-xl flex flex-col items-center justify-center p-6 text-center">
+        <div class="max-w-md w-full space-y-8 animate-fade-in">
+            <div class="relative inline-block">
+                <div class="absolute inset-0 bg-purple-600 rounded-full blur-2xl opacity-50 animate-pulse"></div>
+                <div class="relative bg-gradient-to-tr from-purple-600 to-pink-500 p-8 rounded-3xl shadow-2xl border border-purple-300/30">
+                    <i class="fa-solid fa-dice-d20 text-6xl text-white"></i>
+                </div>
+            </div>
+
+            <div>
+                <h1 class="text-4xl font-black text-white tracking-wider mb-2">GAME ARENA</h1>
+                <p class="text-purple-300 text-lg font-light" data-i18n="welcomeSub">Witaj w klubie gier planszowych!</p>
+            </div>
+
+            <!-- Start Button -->
+            <button onclick="hideWelcomeOverlay()" 
+                class="w-full py-5 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-black text-2xl rounded-2xl shadow-2xl shadow-purple-600/50 transition transform hover:scale-105 active:scale-95 flex items-center justify-center space-x-3">
+                <i class="fa-solid fa-play"></i>
+                <span data-i18n="startBtn">ROZPOCZNIJ</span>
+            </button>
+
+            <!-- Language Switcher in Welcome Overlay -->
+            <div class="pt-6 border-t border-slate-800 flex justify-center space-x-4">
+                <button onclick="setLanguage('PL')" class="px-4 py-2 bg-purple-900/50 border border-purple-500/40 rounded-xl text-sm font-bold text-white hover:bg-purple-800">🇵🇱 Polski</button>
+                <button onclick="setLanguage('EN')" class="px-4 py-2 bg-purple-900/50 border border-purple-500/40 rounded-xl text-sm font-bold text-white hover:bg-purple-800">🇬🇧 English</button>
+                <button onclick="setLanguage('DE')" class="px-4 py-2 bg-purple-900/50 border border-purple-500/40 rounded-xl text-sm font-bold text-white hover:bg-purple-800">🇩🇪 Deutsch</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- OVERLAY 2: Idle Timeout Warning -->
+    <div id="idleOverlay" class="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md hidden flex items-center justify-center p-6">
+        <div class="glass-panel p-8 rounded-3xl max-w-sm w-full text-center space-y-6 border border-purple-500/30">
+            <div class="text-5xl text-yellow-400 animate-bounce"><i class="fa-solid fa-clock"></i></div>
+            <h3 class="text-2xl font-bold text-white" data-i18n="idleTitle">Czy jesteś dalej?</h3>
+            <p class="text-slate-300 text-sm" data-i18n="idleDesc">Brak aktywności. Kiosk powróci do ekranu powitalnego za:</p>
+            <div id="idleCounter" class="text-5xl font-black text-pink-500 font-mono">10</div>
+            <button onclick="resetIdleTimer()" class="w-full py-4 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-2xl transition shadow-lg">
+                <span data-i18n="idleStayBtn">Jestem! Kontynuuj</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- OVERLAY 3: Confirmation Receipt -->
+    <div id="receiptOverlay" class="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md hidden flex items-center justify-center p-4">
+        <div class="glass-panel p-8 rounded-3xl max-w-md w-full border border-purple-500/40 shadow-2xl relative text-center space-y-6">
+            <div class="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 p-4 rounded-2xl w-16 h-16 mx-auto flex items-center justify-center text-3xl">
+                <i class="fa-solid fa-circle-check"></i>
+            </div>
+            
+            <div>
+                <h3 class="text-2xl font-black text-white" data-i18n="receiptTitle">Rezerwacja Potwierdzona!</h3>
+                <p class="text-purple-300 text-sm mt-1" data-i18n="receiptSub">Oto Twój bilet rezerwacyjny:</p>
+            </div>
+
+            <!-- Receipt Ticket Card -->
+            <div class="bg-slate-900 border border-purple-500/30 rounded-2xl p-6 text-left space-y-3 font-mono text-sm relative overflow-hidden">
+                <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+                    <span class="text-slate-400 text-xs">NUMER TIKETU</span>
+                    <span id="receiptBadge" class="text-xl font-black text-pink-400">#101</span>
+                </div>
+                <div>
+                    <span class="text-slate-400 text-xs block">GRACZ</span>
+                    <span id="receiptPlayer" class="text-white font-bold text-base">Jan Kowalski</span>
+                </div>
+                <div>
+                    <span class="text-slate-400 text-xs block">GRA PLANNSZOWA</span>
+                    <span id="receiptGame" class="text-purple-300 font-bold">Osadnicy z Catanu</span>
+                </div>
+                <div class="grid grid-cols-2 gap-2 pt-1">
+                    <div>
+                        <span class="text-slate-400 text-xs block">GODZINA</span>
+                        <span id="receiptTime" class="text-slate-200">14:30</span>
+                    </div>
+                    <div>
+                        <span class="text-slate-400 text-xs block">OSÓB</span>
+                        <span id="receiptPlayers" class="text-slate-200">4 graczy</span>
+                    </div>
+                </div>
+                <div class="pt-2 border-t border-slate-800">
+                    <span class="text-slate-400 text-xs block mb-1">PODPIS</span>
+                    <img id="receiptSignatureImg" src="" alt="Podpis" class="h-12 border border-slate-800 rounded bg-slate-950/50 p-1">
+                </div>
+            </div>
+
+            <p class="text-xs text-slate-400"><span data-i18n="receiptAutoReset">Przejście do podziękowania za:</span> <span id="receiptCountdown" class="font-bold text-purple-400">10</span>s</p>
+
+            <button onclick="finishReservationAndThank()" class="w-full py-4 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-2xl transition">
+                <span data-i18n="receiptClose">Zamknij i Zakończ</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- OVERLAY 4: Thank You Screen -->
+    <div id="thankYouOverlay" class="fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-xl hidden flex items-center justify-center p-6 text-center">
+        <div class="max-w-md w-full space-y-6">
+            <div class="text-6xl text-pink-500 animate-bounce"><i class="fa-solid fa-heart"></i></div>
+            <h2 class="text-4xl font-black text-white" data-i18n="thankTitle">Dziękujemy!</h2>
+            <p class="text-purple-200 text-lg" data-i18n="thankDesc">Życzymy udanej rozgrywki przy stoliku!</p>
+            <div class="text-sm text-slate-400"><span data-i18n="thankReset">Reset kiosku za:</span> <span id="thankCountdown" class="font-bold text-pink-400">5</span>s</div>
+        </div>
+    </div>
+
+    <!-- OVERLAY 5: Secret Admin Password Modal -->
+    <div id="adminPassModal" class="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md hidden flex items-center justify-center p-4">
+        <div class="glass-panel p-6 sm:p-8 rounded-3xl max-w-sm w-full border border-purple-500/40 text-center space-y-6 shadow-2xl">
+            <div class="bg-purple-600/20 text-purple-400 p-4 rounded-2xl w-16 h-16 mx-auto flex items-center justify-center text-3xl">
+                <i class="fa-solid fa-user-shield"></i>
+            </div>
+            <div>
+                <h3 class="text-2xl font-black text-white" data-i18n="adminPassTitle">Panel Tajny / Kucharza</h3>
+                <p class="text-xs text-slate-400 mt-1" data-i18n="adminPassSub">Wprowadź kod PIN administratora</p>
+            </div>
+            <input type="password" id="adminPassInput" maxlength="10" placeholder="PIN (domyślny: 7987)" 
+                class="w-full py-3.5 text-center text-2xl font-mono tracking-widest bg-slate-900 border border-purple-500/40 rounded-2xl text-white focus:outline-none focus:ring-2 focus:ring-purple-500">
+            <div id="adminPassError" class="text-xs text-red-400 font-semibold hidden" data-i18n="adminPassError">Nieprawidłowy PIN!</div>
+            <div class="flex space-x-3">
+                <button onclick="closeAdminPassModal()" class="w-1/2 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl transition">Anuluj</button>
+                <button onclick="verifyAdminPassword()" class="w-1/2 py-3 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-xl transition">Wejdź</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- OVERLAY 6: Secret Admin Panel (Panel Tajny) -->
+    <div id="adminPanelOverlay" class="fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-2xl hidden flex flex-col">
+        <!-- Admin Header -->
+        <header class="glass-panel px-6 py-4 flex justify-between items-center border-b border-purple-500/30">
+            <div class="flex items-center space-x-3">
+                <div class="bg-pink-600 p-2.5 rounded-xl text-white"><i class="fa-solid fa-user-gear text-xl"></i></div>
+                <div>
+                    <h2 class="text-xl font-black text-white" data-i18n="adminPanelHeader">PANEL TAJNY ADMINISTRATORA</h2>
+                    <p class="text-xs text-purple-300" data-i18n="adminPanelSub">Zarządzanie grami i listą rezerwacji</p>
+                </div>
+            </div>
+            <button onclick="closeAdminPanel()" class="bg-red-500/20 border border-red-500/40 text-red-300 hover:bg-red-500/30 px-4 py-2 rounded-xl text-sm font-bold transition">
+                <i class="fa-solid fa-xmark mr-1"></i> <span data-i18n="closeAdmin">Zamknij Panel</span>
+            </button>
+        </header>
+
+        <!-- Admin Content Area -->
+        <div class="flex-1 overflow-y-auto p-4 sm:p-8 max-w-6xl mx-auto w-full space-y-8">
+            
+            <!-- SECTION A: Game Management -->
+            <section class="glass-card rounded-3xl p-6 border border-purple-500/30 shadow-xl space-y-6">
+                <div class="flex justify-between items-center border-b border-slate-800 pb-4">
+                    <h3 class="text-xl font-bold text-white flex items-center space-x-2">
+                        <i class="fa-solid fa-gamepad text-purple-400"></i>
+                        <span data-i18n="adminManageGames">Zarządzanie Grami Planszowymi</span>
+                    </h3>
+                    <button onclick="openAddGameModal()" class="px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-bold text-sm rounded-xl transition shadow flex items-center space-x-1">
+                        <i class="fa-solid fa-plus"></i>
+                        <span data-i18n="adminAddGameBtn">Dodaj Nową Grę</span>
+                    </button>
+                </div>
+
+                <!-- Games Grid -->
+                <div id="adminGamesList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <!-- Dynamic games cards -->
+                </div>
+            </section>
+
+            <!-- SECTION B: Live Reservations List -->
+            <section class="glass-card rounded-3xl p-6 border border-purple-500/30 shadow-xl space-y-6">
+                <div class="flex justify-between items-center border-b border-slate-800 pb-4">
+                    <h3 class="text-xl font-bold text-white flex items-center space-x-2">
+                        <i class="fa-solid fa-list-check text-pink-400"></i>
+                        <span data-i18n="adminLiveBookings">Aktywne Rezerwacje</span>
+                    </h3>
+                    <span id="bookingCountBadge" class="bg-purple-600 text-white text-xs font-bold px-3 py-1 rounded-full">0 rezerwacji</span>
+                </div>
+
+                <!-- Reservations Table / Grid -->
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm text-slate-300">
+                        <thead class="text-xs uppercase bg-slate-900/80 text-purple-300 border-b border-purple-500/20">
+                            <tr>
+                                <th class="p-3">#</th>
+                                <th class="p-3" data-i18n="thName">Imię i Nazwisko</th>
+                                <th class="p-3" data-i18n="thGame">Gra</th>
+                                <th class="p-3" data-i18n="thTime">Godzina</th>
+                                <th class="p-3" data-i18n="thPlayers">Liczba osób</th>
+                                <th class="p-3" data-i18n="thSignature">Podpis</th>
+                                <th class="p-3 text-right" data-i18n="thActions">Akcje</th>
+                            </tr>
+                        </thead>
+                        <tbody id="adminReservationsTable" class="divide-y divide-slate-800">
+                            <!-- Dynamic booking rows -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- SECTION C: Admin Settings (Change Password) -->
+            <section class="glass-card rounded-3xl p-6 border border-purple-500/30 shadow-xl max-w-md">
+                <h3 class="text-lg font-bold text-white mb-4 flex items-center space-x-2">
+                    <i class="fa-solid fa-key text-yellow-400"></i>
+                    <span data-i18n="adminChangePinTitle">Zmień PIN Panelu Tajnego</span>
+                </h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 mb-1" data-i18n="adminNewPinLabel">Nowy Kod PIN</label>
+                        <input type="password" id="newAdminPinInput" placeholder="np. 1234" class="w-full px-4 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white text-sm focus:outline-none focus:border-purple-500">
+                    </div>
+                    <button onclick="saveNewAdminPin()" class="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-purple-300 font-bold rounded-xl text-sm border border-purple-500/30 transition">
+                        <span data-i18n="adminSavePinBtn">Zapisz Nowy PIN</span>
+                    </button>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <!-- MODAL: Add / Edit Game -->
+    <div id="gameModal" class="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md hidden flex items-center justify-center p-4">
+        <div class="glass-panel p-6 rounded-3xl max-w-md w-full border border-purple-500/40 space-y-4 shadow-2xl">
+            <h3 id="gameModalTitle" class="text-xl font-bold text-white">Dodaj Nową Grę</h3>
+            <form id="gameModalForm" onsubmit="saveGameForm(event)" class="space-y-4">
+                <input type="hidden" id="editGameId">
+                <div>
+                    <label class="block text-xs font-semibold text-purple-200 mb-1">Nazwa Gry *</label>
+                    <input type="text" id="modalGameTitle" required placeholder="np. Wsiąść do Pociągu" class="w-full px-4 py-2.5 bg-slate-900 border border-purple-500/30 rounded-xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-purple-200 mb-1">Maksymalna liczba graczy *</label>
+                    <input type="number" id="modalGameMaxPlayers" min="1" max="20" required value="4" class="w-full px-4 py-2.5 bg-slate-900 border border-purple-500/30 rounded-xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-purple-200 mb-1">Opis / Kategoria</label>
+                    <textarea id="modalGameDesc" rows="3" placeholder="Krótki opis gry, kategoria..." class="w-full px-4 py-2.5 bg-slate-900 border border-purple-500/30 rounded-xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"></textarea>
+                </div>
+                <div class="flex space-x-3 pt-2">
+                    <button type="button" onclick="closeGameModal()" class="w-1/2 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-sm rounded-xl transition">Anuluj</button>
+                    <button type="submit" class="w-1/2 py-2.5 bg-purple-600 hover:bg-purple-500 text-white font-bold text-sm rounded-xl transition">Zapisz Grę</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Firebase Script & App Logic -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Firebase Configuration (Matching request specs)
+        const firebaseConfig = {
+            projectId: "kiosk-5f5e0"
+        };
+
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'kiosk-5f5e0';
+        
+        let app, db, auth;
+        let isFirebaseAvailable = false;
+
+        try {
+            app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            auth = getAuth(app);
+            
+            // Authenticate first
+            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                await signInWithCustomToken(auth, __initial_auth_token);
+            } else {
+                await signInAnonymously(auth);
+            }
+            isFirebaseAvailable = true;
+            console.log("Firebase initialized successfully");
+        } catch (err) {
+            console.warn("Firebase fallback active. LocalStorage mode enabled.", err);
+            isFirebaseAvailable = false;
+        }
+
+        // Global State & Storage Keys
+        window.db = db;
+        window.appId = appId;
+        window.isFirebaseAvailable = isFirebaseAvailable;
+    </script>
+
+    <script>
+        // Internationalization Translations
+        const i18n = {
+            PL: {
+                subHeader: "Kiosk Rezerwacji Stolików",
+                exitBtn: "Wyjdź",
+                formTitle: "Zarezerwuj Sesję Gry",
+                fieldName: "Imię i Nazwisko *",
+                fieldGame: "Wybór gry planszowej *",
+                fieldPlayers: "Liczba graczy",
+                fieldTime: "Godzina Rezerwacji",
+                nowBtn: "Teraz",
+                fieldSignature: "Podpis elektroniczny *",
+                clearSignature: "Wyczyść podpis",
+                signatureHint: "Złóż podpis palcem lub myszką tutaj...",
+                submitBtn: "ZŁÓŻ REZERWACJĘ",
+                welcomeSub: "Witaj w klubie gier planszowych!",
+                startBtn: "ROZPOCZNIJ",
+                idleTitle: "Czy jesteś dalej?",
+                idleDesc: "Brak aktywności. Kiosk powróci do ekranu powitalnego za:",
+                idleStayBtn: "Jestem! Kontynuuj",
+                receiptTitle: "Rezerwacja Potwierdzona!",
+                receiptSub: "Oto Twój bilet rezerwacyjny:",
+                receiptAutoReset: "Przejście do podziękowania za:",
+                receiptClose: "Zamknij i Zakończ",
+                thankTitle: "Dziękujemy!",
+                thankDesc: "Życzymy udanej rozgrywki przy stoliku!",
+                thankReset: "Reset kiosku za:",
+                adminPassTitle: "Panel Tajny / Kucharza",
+                adminPassSub: "Wprowadź kod PIN administratora",
+                adminPassError: "Nieprawidłowy PIN!",
+                adminPanelHeader: "PANEL TAJNY ADMINISTRATORA",
+                adminPanelSub: "Zarządzanie grami i listą rezerwacji",
+                closeAdmin: "Zamknij Panel",
+                adminManageGames: "Zarządzanie Grami Planszowymi",
+                adminAddGameBtn: "Dodaj Nową Grę",
+                adminLiveBookings: "Aktywne Rezerwacje",
+                thName: "Imię i Nazwisko",
+                thGame: "Gra",
+                thTime: "Godzina",
+                thPlayers: "Liczba osób",
+                thSignature: "Podpis",
+                thActions: "Akcje",
+                adminChangePinTitle: "Zmień PIN Panelu Tajnego",
+                adminNewPinLabel: "Nowy Kod PIN",
+                adminSavePinBtn: "Zapisz Nowy PIN"
+            },
+            EN: {
+                subHeader: "Table Reservation Kiosk",
+                exitBtn: "Exit",
+                formTitle: "Reserve Game Session",
+                fieldName: "Full Name *",
+                fieldGame: "Select Board Game *",
+                fieldPlayers: "Number of Players",
+                fieldTime: "Booking Time",
+                nowBtn: "Now",
+                fieldSignature: "Digital Signature *",
+                clearSignature: "Clear Signature",
+                signatureHint: "Draw your signature here using finger or mouse...",
+                submitBtn: "BOOK SESSION",
+                welcomeSub: "Welcome to the Board Game Club!",
+                startBtn: "START",
+                idleTitle: "Are you still there?",
+                idleDesc: "Inactivity detected. Resetting to welcome screen in:",
+                idleStayBtn: "Yes, I am here!",
+                receiptTitle: "Reservation Confirmed!",
+                receiptSub: "Here is your booking receipt:",
+                receiptAutoReset: "Proceeding in:",
+                receiptClose: "Close & Finish",
+                thankTitle: "Thank You!",
+                thankDesc: "Enjoy your game session at the table!",
+                thankReset: "Kiosk resetting in:",
+                adminPassTitle: "Secret Admin Panel",
+                adminPassSub: "Enter administrator PIN",
+                adminPassError: "Invalid PIN!",
+                adminPanelHeader: "SECRET ADMIN PANEL",
+                adminPanelSub: "Manage games and active reservations",
+                closeAdmin: "Close Panel",
+                adminManageGames: "Board Games Management",
+                adminAddGameBtn: "Add New Game",
+                adminLiveBookings: "Active Reservations",
+                thName: "Full Name",
+                thGame: "Game",
+                thTime: "Time",
+                thPlayers: "Players",
+                thSignature: "Signature",
+                thActions: "Actions",
+                adminChangePinTitle: "Change Admin PIN",
+                adminNewPinLabel: "New PIN Code",
+                adminSavePinBtn: "Save New PIN"
+            },
+            DE: {
+                subHeader: "Brettspiel-Reservierungskiosk",
+                exitBtn: "Beenden",
+                formTitle: "Spielesession Buchen",
+                fieldName: "Vor- und Nachname *",
+                fieldGame: "Brettspiel Auswählen *",
+                fieldPlayers: "Anzahl der Spieler",
+                fieldTime: "Reservierungszeit",
+                nowBtn: "Jetzt",
+                fieldSignature: "Elektronische Unterschrift *",
+                clearSignature: "Unterschrift löschen",
+                signatureHint: "Hier mit Finger oder Maus unterschreiben...",
+                submitBtn: "JETZT BUCHEN",
+                welcomeSub: "Willkommen im Brettspiel-Club!",
+                startBtn: "STARTEN",
+                idleTitle: "Bist du noch da?",
+                idleDesc: "Keine Aktivität. Zurück zum Startbildschirm in:",
+                idleStayBtn: "Ja, ich bin hier!",
+                receiptTitle: "Reservierung Bestätigt!",
+                receiptSub: "Hier ist dein Buchungsbeleg:",
+                receiptAutoReset: "Weiter in:",
+                receiptClose: "Schließen & Beenden",
+                thankTitle: "Vielen Dank!",
+                thankDesc: "Viel Spaß beim Spielen am Tisch!",
+                thankReset: "Kiosk-Reset in:",
+                adminPassTitle: "Geheimes Admin-Panel",
+                adminPassSub: "Administrator-PIN eingeben",
+                adminPassError: "Ungültige PIN!",
+                adminPanelHeader: "GEHEIMES ADMIN-PANEL",
+                adminPanelSub: "Verwaltung von Spielen und Reservierungen",
+                closeAdmin: "Panel Schließen",
+                adminManageGames: "Brettspiel-Verwaltung",
+                adminAddGameBtn: "Neues Spiel Hinzufügen",
+                adminLiveBookings: "Aktive Reservierungen",
+                thName: "Name",
+                thGame: "Spiel",
+                thTime: "Uhrzeit",
+                thPlayers: "Spieler",
+                thSignature: "Unterschrift",
+                thActions: "Aktionen",
+                adminChangePinTitle: "Admin-PIN Ändern",
+                adminNewPinLabel: "Neue PIN",
+                adminSavePinBtn: "Neue PIN Speichern"
+            }
+        };
+
+        let currentLang = 'PL';
+
+        function setLanguage(lang) {
+            currentLang = lang;
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (i18n[lang] && i18n[lang][key]) {
+                    el.innerText = i18n[lang][key];
+                }
+            });
+            // Update lang buttons highlighting
+            ['PL', 'EN', 'DE'].forEach(l => {
+                const btn = document.getElementById(`lang-${l}`);
+                if (btn) {
+                    if (l === lang) {
+                        btn.className = "px-3 py-1 text-xs font-bold rounded-lg transition duration-200 bg-purple-600 text-white shadow";
+                    } else {
+                        btn.className = "px-3 py-1 text-xs font-bold rounded-lg transition duration-200 text-slate-400 hover:text-white";
+                    }
+                }
+            });
+        }
+
+        // Clock & Secret Trigger Logic
+        let clockClicks = [];
+        let adminPin = localStorage.getItem('kioskAdminPin') || '7987';
+
+        function updateClock() {
+            const now = new Date();
+            const timeStr = now.toTimeString().split(' ')[0];
+            document.getElementById('liveClock').innerText = timeStr;
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        document.getElementById('clockBtn').addEventListener('click', () => {
+            const now = Date.now();
+            clockClicks.push(now);
+            // Keep clicks within last 1.5 seconds
+            clockClicks = clockClicks.filter(t => now - t <= 1500);
+            if (clockClicks.length >= 5) {
+                clockClicks = [];
+                openAdminPassModal();
+            }
+        });
+
+        // Default Games & App Data
+        const defaultGames = [
+            { id: 'g1', title: 'Catan / Osadnicy z Catanu', maxPlayers: 4, desc: 'Klasyczna gra strategiczna o handlu i budowaniu osad.' },
+            { id: 'g2', title: 'Wsiąść do Pociągu: Europa', maxPlayers: 5, desc: 'Emocjonująca podróż kolejowa po Europie.' },
+            { id: 'g3', title: 'Codenames / Tajniacy', maxPlayers: 8, desc: 'Imprezowa gra skojarzeń słownych.' }
+        ];
+
+        let games = [];
+        let reservations = [];
+
+        function loadInitialData() {
+            const storedGames = localStorage.getItem('kioskGames');
+            if (storedGames) {
+                try { games = JSON.parse(storedGames); } catch (e) { games = defaultGames; }
+            } else {
+                games = defaultGames;
+                saveGamesLocal();
+            }
+
+            const storedReservations = localStorage.getItem('kioskReservations');
+            if (storedReservations) {
+                try { reservations = JSON.parse(storedReservations); } catch (e) { reservations = []; }
+            }
+
+            renderGameOptions();
+            renderAdminGames();
+            renderAdminReservations();
+        }
+
+        function saveGamesLocal() {
+            localStorage.setItem('kioskGames', JSON.stringify(games));
+        }
+
+        function saveReservationsLocal() {
+            localStorage.setItem('kioskReservations', JSON.stringify(reservations));
+        }
+
+        // Render UI Elements
+        function renderGameOptions() {
+            const select = document.getElementById('gameSelect');
+            select.innerHTML = '';
+            games.forEach(g => {
+                const opt = document.createElement('option');
+                opt.value = g.id;
+                opt.innerText = `${g.title} (Max: ${g.maxPlayers} graczy)`;
+                select.appendChild(opt);
+            });
+            updateGameDetails();
+        }
+
+        function updateGameDetails() {
+            const select = document.getElementById('gameSelect');
+            const game = games.find(g => g.id === select.value);
+            const detailsEl = document.getElementById('selectedGameDetails');
+            if (game) {
+                detailsEl.innerText = `${game.desc} • Maksymalnie: ${game.maxPlayers} osób`;
+            } else {
+                detailsEl.innerText = '';
+            }
+        }
+        document.getElementById('gameSelect').addEventListener('change', updateGameDetails);
+
+        // Signature Canvas Setup
+        const canvas = document.getElementById('signatureCanvas');
+        const ctx = canvas.getContext('2d');
+        let isDrawing = false;
+        let hasSignature = false;
+
+        function resizeCanvas() {
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width;
+            canvas.height = rect.height;
+            clearSignature();
+        }
+        window.addEventListener('resize', resizeCanvas);
+
+        function getCanvasCoords(e) {
+            const rect = canvas.getBoundingClientRect();
+            let clientX = e.clientX;
+            let clientY = e.clientY;
+
+            if (e.touches && e.touches.length > 0) {
+                clientX = e.touches[0].clientX;
+                clientY = e.touches[0].clientY;
+            }
+            return {
+                x: clientX - rect.left,
+                y: clientY - rect.top
+            };
+        }
+
+        function startDrawing(e) {
+            isDrawing = true;
+            const coords = getCanvasCoords(e);
+            ctx.beginPath();
+            ctx.moveTo(coords.x, coords.y);
+            document.getElementById('signaturePlaceholder').classList.add('hidden');
+        }
+
+        function draw(e) {
+            if (!isDrawing) return;
+            e.preventDefault();
+            const coords = getCanvasCoords(e);
+            ctx.lineWidth = 3;
+            ctx.lineCap = 'round';
+            ctx.strokeStyle = '#a29bfe';
+            ctx.lineTo(coords.x, coords.y);
+            ctx.stroke();
+            hasSignature = true;
+        }
+
+        function stopDrawing() {
+            isDrawing = false;
+        }
+
+        function clearSignature() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            hasSignature = false;
+            document.getElementById('signaturePlaceholder').classList.remove('hidden');
+        }
+
+        canvas.addEventListener('mousedown', startDrawing);
+        canvas.addEventListener('mousemove', draw);
+        window.addEventListener('mouseup', stopDrawing);
+
+        canvas.addEventListener('touchstart', startDrawing, { passive: false });
+        canvas.addEventListener('touchmove', draw, { passive: false });
+        canvas.addEventListener('touchend', stopDrawing);
+
+        // Form Submission Logic
+        function setBookingTimeToNow() {
+            const now = new Date();
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            document.getElementById('bookingTime').value = `${hours}:${minutes}`;
+        }
+        setBookingTimeToNow();
+
+        function handleFormSubmit(e) {
+            e.preventDefault();
+
+            if (!hasSignature) {
+                alert(currentLang === 'PL' ? "Prosimy złożyć podpis przed wysłaniem!" : "Please provide a signature before submitting!");
+                return;
+            }
+
+            const name = document.getElementById('playerName').value.trim();
+            const gameId = document.getElementById('gameSelect').value;
+            const selectedGame = games.find(g => g.id === gameId);
+            const players = document.getElementById('playerCount').value;
+            const time = document.getElementById('bookingTime').value;
+            const sigData = canvas.toDataURL();
+            const ticketNumber = '#' + Math.floor(100 + Math.random() * 900);
+
+            const reservationObj = {
+                id: 'res_' + Date.now(),
+                ticketNumber: ticketNumber,
+                name: name,
+                gameTitle: selectedGame ? selectedGame.title : 'Gra',
+                players: players,
+                time: time,
+                signature: sigData,
+                timestamp: Date.now()
+            };
+
+            reservations.unshift(reservationObj);
+            saveReservationsLocal();
+            renderAdminReservations();
+
+            // Firestore sync if connected
+            if (window.isFirebaseAvailable && window.db) {
+                try {
+                    const docRef = doc(window.db, 'artifacts', window.appId, 'public', 'data', 'game_reservations', reservationObj.id);
+                    setDoc(docRef, reservationObj);
+                } catch (err) {
+                    console.warn("Firestore save error:", err);
+                }
+            }
+
+            // Show Confirmation Receipt
+            showReceiptOverlay(reservationObj);
+        }
+
+        // Overlay & Timeout Management
+        let idleTimer = null;
+        let idleCountdownTimer = null;
+        let idleSeconds = 30;
+
+        function resetIdleTimer() {
+            hideIdleOverlay();
+            clearTimeout(idleTimer);
+            clearInterval(idleCountdownTimer);
+            idleTimer = setTimeout(triggerIdleWarning, 30000); // 30s inactivity
+        }
+
+        function triggerIdleWarning() {
+            const idleOverlay = document.getElementById('idleOverlay');
+            idleOverlay.classList.remove('hidden');
+            let count = 10;
+            document.getElementById('idleCounter').innerText = count;
+
+            idleCountdownTimer = setInterval(() => {
+                count--;
+                document.getElementById('idleCounter').innerText = count;
+                if (count <= 0) {
+                    clearInterval(idleCountdownTimer);
+                    showWelcomeOverlay();
+                }
+            }, 1000);
+        }
+
+        function hideIdleOverlay() {
+            document.getElementById('idleOverlay').classList.add('hidden');
+            clearInterval(idleCountdownTimer);
+        }
+
+        ['click', 'touchstart', 'mousemove', 'keypress'].forEach(evt => {
+            window.addEventListener(evt, resetIdleTimer, { passive: true });
+        });
+
+        function showWelcomeOverlay() {
+            document.getElementById('welcomeOverlay').classList.remove('hidden');
+            document.getElementById('reservationForm').reset();
+            clearSignature();
+            setBookingTimeToNow();
+            hideIdleOverlay();
+        }
+
+        function hideWelcomeOverlay() {
+            document.getElementById('welcomeOverlay').classList.add('hidden');
+            resetIdleTimer();
+            setTimeout(resizeCanvas, 100);
+        }
+
+        // Receipt & Thank You Overlays
+        let receiptTimer = null;
+
+        function showReceiptOverlay(data) {
+            document.getElementById('receiptBadge').innerText = data.ticketNumber;
+            document.getElementById('receiptPlayer').innerText = data.name;
+            document.getElementById('receiptGame').innerText = data.gameTitle;
+            document.getElementById('receiptTime').innerText = data.time;
+            document.getElementById('receiptPlayers').innerText = `${data.players} osób/graczy`;
+            document.getElementById('receiptSignatureImg').src = data.signature;
+
+            document.getElementById('receiptOverlay').classList.remove('hidden');
+
+            let countdown = 10;
+            document.getElementById('receiptCountdown').innerText = countdown;
+
+            clearInterval(receiptTimer);
+            receiptTimer = setInterval(() => {
+                countdown--;
+                document.getElementById('receiptCountdown').innerText = countdown;
+                if (countdown <= 0) {
+                    clearInterval(receiptTimer);
+                    finishReservationAndThank();
+                }
+            }, 1000);
+        }
+
+        function finishReservationAndThank() {
+            clearInterval(receiptTimer);
+            document.getElementById('receiptOverlay').classList.add('hidden');
+            
+            // Show Thank You Screen
+            const thankOverlay = document.getElementById('thankYouOverlay');
+            thankOverlay.classList.remove('hidden');
+
+            let count = 5;
+            document.getElementById('thankCountdown').innerText = count;
+            const thankTimer = setInterval(() => {
+                count--;
+                document.getElementById('thankCountdown').innerText = count;
+                if (count <= 0) {
+                    clearInterval(thankTimer);
+                    thankOverlay.classList.add('hidden');
+                    showWelcomeOverlay();
+                }
+            }, 1000);
+        }
+
+        // Admin Secret Panel Logic
+        function openAdminPassModal() {
+            document.getElementById('adminPassInput').value = '';
+            document.getElementById('adminPassError').classList.add('hidden');
+            document.getElementById('adminPassModal').classList.remove('hidden');
+        }
+
+        function closeAdminPassModal() {
+            document.getElementById('adminPassModal').classList.add('hidden');
+        }
+
+        function verifyAdminPassword() {
+            const entered = document.getElementById('adminPassInput').value;
+            if (entered === adminPin) {
+                closeAdminPassModal();
+                openAdminPanel();
+            } else {
+                document.getElementById('adminPassError').classList.remove('hidden');
+            }
+        }
+
+        function openAdminPanel() {
+            document.getElementById('adminPanelOverlay').classList.remove('hidden');
+            renderAdminGames();
+            renderAdminReservations();
+        }
+
+        function closeAdminPanel() {
+            document.getElementById('adminPanelOverlay').classList.add('hidden');
+        }
+
+        function saveNewAdminPin() {
+            const newPin = document.getElementById('newAdminPinInput').value.trim();
+            if (newPin.length >= 4) {
+                adminPin = newPin;
+                localStorage.setItem('kioskAdminPin', newPin);
+                alert("PIN został zmieniony pomyślnie / PIN updated!");
+                document.getElementById('newAdminPinInput').value = '';
+            } else {
+                alert("PIN musi mieć minimum 4 znaki!");
+            }
+        }
+
+        // Admin Game Management
+        function renderAdminGames() {
+            const container = document.getElementById('adminGamesList');
+            container.innerHTML = '';
+
+            games.forEach(g => {
+                const card = document.createElement('div');
+                card.className = "p-4 bg-slate-900 border border-purple-500/20 rounded-2xl space-y-2 relative group";
+                card.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <h4 class="font-bold text-white text-base">${g.title}</h4>
+                        <span class="text-xs font-semibold px-2 py-0.5 bg-purple-900/60 text-purple-300 rounded-lg">Max: ${g.maxPlayers}</span>
+                    </div>
+                    <p class="text-xs text-slate-400 italic">${g.desc || 'Brak opisu'}</p>
+                    <div class="flex justify-end space-x-2 pt-2 border-t border-slate-800">
+                        <button onclick="editGame('${g.id}')" class="px-2.5 py-1 text-xs bg-slate-800 hover:bg-slate-700 text-purple-300 rounded-lg transition">
+                            <i class="fa-solid fa-pen"></i> Edytuj
+                        </button>
+                        <button onclick="deleteGame('${g.id}')" class="px-2.5 py-1 text-xs bg-red-900/40 hover:bg-red-800/60 text-red-300 rounded-lg transition">
+                            <i class="fa-solid fa-trash"></i> Usuń
+                        </button>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function openAddGameModal() {
+            document.getElementById('gameModalTitle').innerText = "Dodaj Nową Grę";
+            document.getElementById('editGameId').value = '';
+            document.getElementById('modalGameTitle').value = '';
+            document.getElementById('modalGameMaxPlayers').value = '4';
+            document.getElementById('modalGameDesc').value = '';
+            document.getElementById('gameModal').classList.remove('hidden');
+        }
+
+        function editGame(id) {
+            const g = games.find(item => item.id === id);
+            if (!g) return;
+            document.getElementById('gameModalTitle').innerText = "Edytuj Grę Planszową";
+            document.getElementById('editGameId').value = g.id;
+            document.getElementById('modalGameTitle').value = g.title;
+            document.getElementById('modalGameMaxPlayers').value = g.maxPlayers;
+            document.getElementById('modalGameDesc').value = g.desc || '';
+            document.getElementById('gameModal').classList.remove('hidden');
+        }
+
+        function closeGameModal() {
+            document.getElementById('gameModal').classList.add('hidden');
+        }
+
+        function saveGameForm(e) {
+            e.preventDefault();
+            const editId = document.getElementById('editGameId').value;
+            const title = document.getElementById('modalGameTitle').value.trim();
+            const maxPlayers = parseInt(document.getElementById('modalGameMaxPlayers').value, 10);
+            const desc = document.getElementById('modalGameDesc').value.trim();
+
+            if (editId) {
+                const game = games.find(g => g.id === editId);
+                if (game) {
+                    game.title = title;
+                    game.maxPlayers = maxPlayers;
+                    game.desc = desc;
+                }
+            } else {
+                games.push({
+                    id: 'g_' + Date.now(),
+                    title: title,
+                    maxPlayers: maxPlayers,
+                    desc: desc
+                });
+            }
+
+            saveGamesLocal();
+            renderGameOptions();
+            renderAdminGames();
+            closeGameModal();
+        }
+
+        function deleteGame(id) {
+            if (games.length <= 1) {
+                alert("Musi pozostać co najmniej jedna gra w systemie!");
+                return;
+            }
+            if (confirm("Czy na pewno chcesz usunąć tę grę?")) {
+                games = games.filter(g => g.id !== id);
+                saveGamesLocal();
+                renderGameOptions();
+                renderAdminGames();
+            }
+        }
+
+        // Admin Reservations Management
+        function renderAdminReservations() {
+            const table = document.getElementById('adminReservationsTable');
+            const countBadge = document.getElementById('bookingCountBadge');
+            table.innerHTML = '';
+            countBadge.innerText = `${reservations.length} rezerwacji`;
+
+            if (reservations.length === 0) {
+                table.innerHTML = `<tr><td colspan="7" class="text-center p-6 text-slate-500 italic">Brak aktywnych rezerwacji.</td></tr>`;
+                return;
+            }
+
+            reservations.forEach((r, idx) => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-900/50 transition";
+                tr.innerHTML = `
+                    <td class="p-3 font-mono font-bold text-pink-400">${r.ticketNumber || '#'+(idx+1)}</td>
+                    <td class="p-3 font-semibold text-white">${r.name}</td>
+                    <td class="p-3 text-purple-300">${r.gameTitle}</td>
+                    <td class="p-3 font-mono">${r.time}</td>
+                    <td class="p-3">${r.players} os.</td>
+                    <td class="p-3">
+                        ${r.signature ? `<img src="${r.signature}" class="h-8 border border-slate-700 bg-slate-950 rounded p-0.5">` : '-'}
+                    </td>
+                    <td class="p-3 text-right">
+                        <button onclick="deleteReservation('${r.id}')" class="px-3 py-1 bg-red-900/40 hover:bg-red-800 text-red-300 rounded-lg text-xs transition">
+                            <i class="fa-solid fa-trash"></i> Usunąć
+                        </button>
+                    </td>
+                `;
+                table.appendChild(tr);
+            });
+        }
+
+        function deleteReservation(id) {
+            if (confirm("Czy na pewno usunąć tę rezerwację?")) {
+                reservations = reservations.filter(r => r.id !== id);
+                saveReservationsLocal();
+                renderAdminReservations();
+
+                if (window.isFirebaseAvailable && window.db) {
+                    try {
+                        const docRef = doc(window.db, 'artifacts', window.appId, 'public', 'data', 'game_reservations', id);
+                        deleteDoc(docRef);
+                    } catch (err) {
+                        console.warn("Firestore delete error:", err);
+                    }
+                }
+            }
+        }
+
+        // Initialization
+        window.onload = function() {
+            loadInitialData();
+            resizeCanvas();
+            resetIdleTimer();
+        };
+    </script>
+</body>
+</html>
